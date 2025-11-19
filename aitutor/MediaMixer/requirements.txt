@@ -1,0 +1,12 @@
+flask
+werkzeug
+flask-cors
+opencv-python
+numpy
+mss
+pillow
+click
+itsdangerous
+jinja2
+markupsafe
+websockets
