@@ -192,8 +192,8 @@ class TalkingHeadEngine:
         intensity: float
     ) -> np.ndarray:
         """
-        Generate a mock animated frame for development
-        Simulates expression changes with simple overlays
+        Generate a realistic mock animated frame for development
+        Simulates lip movement and expression changes
         """
         if self.source_image is None:
             # Create placeholder colored frame
@@ -202,28 +202,100 @@ class TalkingHeadEngine:
             return frame
 
         frame = self.source_image.copy()
+        h, w = frame.shape[:2]
 
-        # Add simple visual indicator of expression
-        color_map = {
-            "neutral": (200, 200, 200),
-            "happy": (100, 255, 100),
-            "thinking": (100, 100, 255),
-            "encouraging": (255, 255, 100),
-            "concerned": (255, 150, 100),
+        # Mouth position (approximate center-bottom of face)
+        mouth_x, mouth_y = w // 2, int(h * 0.5)
+
+        # Simulate lip movement based on time (for speaking animation)
+        t = time.time()
+        lip_movement = abs(np.sin(t * 15)) * intensity  # Fast oscillation for talking
+
+        # Expression parameters
+        expression_params = {
+            "neutral": {"mouth_open": 0.0, "smile": 0.0, "brow": 0.0},
+            "happy": {"mouth_open": 0.2, "smile": 0.8, "brow": 0.2},
+            "thinking": {"mouth_open": 0.1, "smile": -0.2, "brow": -0.3},
+            "encouraging": {"mouth_open": 0.3, "smile": 0.6, "brow": 0.2},
+            "concerned": {"mouth_open": 0.15, "smile": -0.3, "brow": -0.2},
+            "excited": {"mouth_open": 0.5, "smile": 0.9, "brow": 0.4},
+            "proud": {"mouth_open": 0.25, "smile": 0.7, "brow": 0.3},
+            "curious": {"mouth_open": 0.2, "smile": 0.1, "brow": 0.4},
+            "explaining": {"mouth_open": 0.4, "smile": 0.2, "brow": 0.1},
+            "listening": {"mouth_open": 0.05, "smile": 0.2, "brow": 0.15},
         }
 
-        color = color_map.get(expression, (200, 200, 200))
+        params = expression_params.get(expression, expression_params["neutral"])
 
-        # Add expression indicator border
-        thickness = int(5 * intensity)
-        if thickness > 0:
-            cv2.rectangle(
-                frame,
-                (0, 0),
-                (self.config.output_resolution[0] - 1, self.config.output_resolution[1] - 1),
-                color,
-                thickness
-            )
+        # Calculate mouth opening (combine expression + lip sync)
+        mouth_open = (params["mouth_open"] + lip_movement * 0.5) * intensity
+
+        # Draw mouth overlay to simulate talking
+        if mouth_open > 0.05:
+            # Create semi-transparent overlay for mouth
+            overlay = frame.copy()
+
+            # Mouth opening (dark interior)
+            mouth_height = int(15 * mouth_open)
+            mouth_width = int(30 + params["smile"] * 20)
+
+            if mouth_height > 2:
+                cv2.ellipse(
+                    overlay,
+                    (mouth_x, mouth_y),
+                    (mouth_width, mouth_height),
+                    0, 0, 360,
+                    (40, 30, 30),  # Dark mouth interior
+                    -1
+                )
+
+                # Teeth hint for larger openings
+                if mouth_height > 8:
+                    cv2.ellipse(
+                        overlay,
+                        (mouth_x, mouth_y - mouth_height // 3),
+                        (mouth_width - 5, mouth_height // 3),
+                        0, 0, 360,
+                        (240, 240, 240),  # White teeth
+                        -1
+                    )
+
+            # Blend overlay
+            alpha = 0.7
+            frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+
+        # Add expression indicator (subtle glow effect)
+        expression_colors = {
+            "neutral": (128, 128, 128),
+            "happy": (80, 200, 80),
+            "thinking": (200, 150, 80),
+            "encouraging": (80, 200, 200),
+            "concerned": (80, 120, 200),
+            "excited": (80, 255, 150),
+            "proud": (200, 180, 80),
+            "curious": (200, 150, 200),
+            "explaining": (150, 200, 200),
+            "listening": (150, 180, 150),
+        }
+
+        color = expression_colors.get(expression, (128, 128, 128))
+
+        # Subtle corner indicator
+        corner_size = int(30 * intensity)
+        if corner_size > 5:
+            # Top-left corner glow
+            pts = np.array([[0, 0], [corner_size, 0], [0, corner_size]], np.int32)
+            cv2.fillPoly(frame, [pts], color)
+
+            # Bottom-right corner glow
+            pts = np.array([[w, h], [w - corner_size, h], [w, h - corner_size]], np.int32)
+            cv2.fillPoly(frame, [pts], color)
+
+        # Add speaking indicator
+        if lip_movement > 0.3:
+            # Small pulsing circle to indicate active speech
+            pulse_size = int(5 + lip_movement * 5)
+            cv2.circle(frame, (w - 25, 25), pulse_size, (80, 255, 80), -1)
 
         return frame
 
@@ -343,22 +415,22 @@ class LipSyncProcessor:
 AVATAR_PRESETS = {
     "teacher": {
         "name": "Friendly Teacher",
-        "image": "avatars/models/teacher/portrait.ppm",
+        "image": "avatars/models/teacher/portrait.png",
         "description": "Warm and encouraging teacher"
     },
     "einstein": {
         "name": "Albert Einstein",
-        "image": "avatars/models/einstein/portrait.ppm",
+        "image": "avatars/models/einstein/portrait.png",
         "description": "Physics and math genius"
     },
     "curie": {
         "name": "Marie Curie",
-        "image": "avatars/models/curie/portrait.ppm",
+        "image": "avatars/models/curie/portrait.png",
         "description": "Science pioneer"
     },
     "lovelace": {
         "name": "Ada Lovelace",
-        "image": "avatars/models/lovelace/portrait.ppm",
+        "image": "avatars/models/lovelace/portrait.png",
         "description": "Computing pioneer"
     }
 }
