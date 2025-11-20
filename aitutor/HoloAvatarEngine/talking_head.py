@@ -413,6 +413,7 @@ class LipSyncProcessor:
 
 # Preset avatar portraits
 AVATAR_PRESETS = {
+    # Original educational characters
     "teacher": {
         "name": "Friendly Teacher",
         "image": "avatars/models/teacher/portrait.png",
@@ -432,5 +433,41 @@ AVATAR_PRESETS = {
         "name": "Ada Lovelace",
         "image": "avatars/models/lovelace/portrait.png",
         "description": "Computing pioneer"
+    },
+    # BMad-Skills specialists
+    "analyst": {
+        "name": "Research Analyst",
+        "image": "avatars/models/analyst/portrait.png",
+        "description": "Explores ideas and researches topics"
+    },
+    "planner": {
+        "name": "Project Planner",
+        "image": "avatars/models/planner/portrait.png",
+        "description": "Plans and organizes projects"
+    },
+    "architect": {
+        "name": "System Architect",
+        "image": "avatars/models/architect/portrait.png",
+        "description": "Teaches system design patterns"
+    },
+    "developer": {
+        "name": "Dev Coach",
+        "image": "avatars/models/developer/portrait.png",
+        "description": "Guides coding and implementation"
+    },
+    "tester": {
+        "name": "Quality Engineer",
+        "image": "avatars/models/tester/portrait.png",
+        "description": "Teaches testing strategies"
+    },
+    "ux_designer": {
+        "name": "UX Designer",
+        "image": "avatars/models/ux_designer/portrait.png",
+        "description": "Teaches user experience design"
+    },
+    "security_expert": {
+        "name": "Security Expert",
+        "image": "avatars/models/security_expert/portrait.png",
+        "description": "Teaches security best practices"
     }
 }
