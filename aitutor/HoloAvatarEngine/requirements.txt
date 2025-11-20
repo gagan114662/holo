@@ -1,0 +1,29 @@
+# HoloAvatar Engine Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core
+numpy>=1.24.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# TTS - XTTS-v2
+TTS>=0.22.0
+
+# WebSocket
+websockets>=12.0
+
+# Deep Learning
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Optional: LivePortrait (install separately)
+# pip install liveportrait
+# or for TensorRT acceleration:
+# pip install faster-liveportrait
+
+# Optional: GPU acceleration
+# onnxruntime-gpu>=1.16.0
+
+# Utilities
+aiofiles>=23.0.0
+pydantic>=2.0.0

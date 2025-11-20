@@ -26,13 +26,20 @@ trap cleanup INT
 
 # Start the Python backend in the background
 echo "Starting Python backend... Logs -> logs/mediamixer.log"
-(cd "$SCRIPT_DIR" && /Users/vandanchopra/Vandan_Personal_Folder/CODE_STUFF/Projects/venvs/aitutor/bin/python MediaMixer/media_mixer.py) > "$SCRIPT_DIR/logs/mediamixer.log" 2>&1 &
+(cd "$SCRIPT_DIR" && python MediaMixer/media_mixer.py) > "$SCRIPT_DIR/logs/mediamixer.log" 2>&1 &
 pids+=($!) # Save the PID of the last backgrounded process
 
 # Start the FastAPI server in the background
 echo "Starting DASH API server... Logs -> logs/api.log"
-(cd "$SCRIPT_DIR" && /Users/vandanchopra/Vandan_Personal_Folder/CODE_STUFF/Projects/venvs/aitutor/bin/python DashSystem/dash_api.py) > "$SCRIPT_DIR/logs/api.log" 2>&1 &
+(cd "$SCRIPT_DIR" && python DashSystem/dash_api.py) > "$SCRIPT_DIR/logs/api.log" 2>&1 &
 pids+=($!) # Save the PID
+
+# Start the HoloAvatar Engine in the background
+if [ "${AVATAR_ENABLED:-true}" = "true" ]; then
+    echo "Starting HoloAvatar Engine... Logs -> logs/avatar.log"
+    (cd "$SCRIPT_DIR" && python -m HoloAvatarEngine.run_avatar) > "$SCRIPT_DIR/logs/avatar.log" 2>&1 &
+    pids+=($!) # Save the PID
+fi
 
 # Give the backend servers a moment to start
 echo "Waiting for backend services to initialize..."
