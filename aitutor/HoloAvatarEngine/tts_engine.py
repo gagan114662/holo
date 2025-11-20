@@ -4,11 +4,17 @@ Supports voice cloning, multilingual synthesis, and streaming output
 """
 import asyncio
 import numpy as np
-import torch
 import io
 import wave
 from typing import Optional, AsyncGenerator
 from pathlib import Path
+
+# Optional torch import for demo mode
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 
 from .config import config, TTSConfig
 
