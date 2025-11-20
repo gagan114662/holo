@@ -113,9 +113,15 @@ class AvatarManager:
         )
 
         # Configure talking head with portrait
-        portrait_path = Path(self.config.avatars_dir) / character_id / "portrait.png"
+        # Look for portrait in HoloAvatarEngine directory
+        base_dir = Path(__file__).parent
+        portrait_path = base_dir / "avatars" / "models" / character_id / "portrait.png"
+        ppm_path = base_dir / "avatars" / "models" / character_id / "portrait.ppm"
+
         if portrait_path.exists():
             self.talking_head.set_source_image(str(portrait_path))
+        elif ppm_path.exists():
+            self.talking_head.set_source_image(str(ppm_path))
         else:
             # Use placeholder
             print(f"Portrait not found at {portrait_path}, using placeholder")

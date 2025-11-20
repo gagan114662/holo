@@ -180,7 +180,27 @@ body {
     transition: all 0.3s ease-in-out;
   }
 
-  
+  .avatar-media-panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    gap: 8px;
+    padding: 8px;
+    overflow-y: auto;
+
+    .holoavatar-display {
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .media-mixer-display {
+      border-left: none;
+      flex: 0;
+    }
+  }
 
   .function-call {
     position: absolute;

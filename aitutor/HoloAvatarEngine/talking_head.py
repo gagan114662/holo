@@ -343,22 +343,22 @@ class LipSyncProcessor:
 AVATAR_PRESETS = {
     "teacher": {
         "name": "Friendly Teacher",
-        "image": "avatars/models/teacher_portrait.png",
+        "image": "avatars/models/teacher/portrait.ppm",
         "description": "Warm and encouraging teacher"
     },
     "einstein": {
         "name": "Albert Einstein",
-        "image": "avatars/models/einstein_portrait.png",
+        "image": "avatars/models/einstein/portrait.ppm",
         "description": "Physics and math genius"
     },
     "curie": {
         "name": "Marie Curie",
-        "image": "avatars/models/curie_portrait.png",
+        "image": "avatars/models/curie/portrait.ppm",
         "description": "Science pioneer"
     },
     "lovelace": {
         "name": "Ada Lovelace",
-        "image": "avatars/models/lovelace_portrait.png",
+        "image": "avatars/models/lovelace/portrait.ppm",
         "description": "Computing pioneer"
     }
 }

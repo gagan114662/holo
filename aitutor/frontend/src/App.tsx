@@ -26,6 +26,7 @@ import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
 import Scratchpad from "./components/scratchpad/Scratchpad";
+import { HoloAvatarDisplay } from "./components/holoavatar";
 
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
 if (typeof API_KEY !== "string") {
@@ -47,6 +48,7 @@ function App() {
   const mixerVideoRef = useRef<HTMLVideoElement>(null);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isScratchpadOpen, setScratchpadOpen] = useState(false);
+  const [isAvatarVisible, setAvatarVisible] = useState(true);
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8765');
@@ -80,7 +82,15 @@ function App() {
                   )}
                 </ScratchpadCapture>
               </div>
-              <MediaMixerDisplay socket={socket} renderCanvasRef={renderCanvasRef} />
+              <div className="avatar-media-panel">
+                {isAvatarVisible && (
+                  <HoloAvatarDisplay
+                    websocketUrl="ws://localhost:8766"
+                    showControls={true}
+                  />
+                )}
+                <MediaMixerDisplay socket={socket} renderCanvasRef={renderCanvasRef} />
+              </div>
             </div>
 
             <ControlTray
@@ -92,6 +102,11 @@ function App() {
               onMixerStreamChange={setMixerStream}
               enableEditingSettings={true}
             >
+              <button onClick={() => setAvatarVisible(!isAvatarVisible)} title="Toggle Avatar">
+                <span className="material-symbols-outlined">
+                  {isAvatarVisible ? "person_off" : "person"}
+                </span>
+              </button>
               <button onClick={() => setScratchpadOpen(!isScratchpadOpen)}>
                 <span className="material-symbols-outlined">
                   {isScratchpadOpen ? "close" : "edit"}
