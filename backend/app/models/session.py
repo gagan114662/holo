@@ -22,28 +22,30 @@ class TutoringSession(Base):
     __tablename__ = "tutoring_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
     # Session info
+    session_type = Column(String(50), default="tutoring")  # tutoring, practice, assessment
     avatar_id = Column(String(50), nullable=False)
     avatar_name = Column(String(100), nullable=True)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=True)
-    status = Column(SQLEnum(SessionStatus), default=SessionStatus.ACTIVE)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=True, index=True)
+    status = Column(SQLEnum(SessionStatus), default=SessionStatus.ACTIVE, index=True)
 
     # Stats
     questions_answered = Column(Integer, default=0)
     correct_answers = Column(Integer, default=0)
     duration_minutes = Column(Integer, default=0)
+    xp_earned = Column(Integer, default=0)  # Total XP earned in this session
 
     # Timestamps
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=datetime.utcnow, index=True)
     ended_at = Column(DateTime, nullable=True)
     last_activity_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="sessions")
     subject = relationship("Subject")
-    messages = relationship("SessionMessage", back_populates="session", order_by="SessionMessage.created_at")
+    messages = relationship("SessionMessage", back_populates="session", order_by="SessionMessage.timestamp")
     attempts = relationship("QuestionAttempt", back_populates="session")
 
     @property
@@ -66,7 +68,7 @@ class SessionMessage(Base):
     __tablename__ = "session_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=False, index=True)
 
     # Message content
     role = Column(SQLEnum(MessageRole), nullable=False)
@@ -79,7 +81,7 @@ class SessionMessage(Base):
     extra_data = Column(JSONB, default={})  # Renamed from 'metadata' (SQLAlchemy reserved)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)  # Renamed from 'created_at'
 
     # Relationships
     session = relationship("TutoringSession", back_populates="messages")

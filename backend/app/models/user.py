@@ -1,7 +1,7 @@
 """
 User model
 """
-from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -24,11 +24,17 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     firebase_uid = Column(String(128), unique=True, index=True, nullable=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    name = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Null if using Firebase auth only
+    display_name = Column(String(255), nullable=False)
     avatar_url = Column(String(500), nullable=True)
     role = Column(SQLEnum(UserRole), default=UserRole.STUDENT, nullable=False)
+    grade_level = Column(String(20), nullable=True)  # e.g., "6th", "7th", "high_school"
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+
+    # Progress tracking
+    total_xp = Column(Integer, default=0)
+    streak_days = Column(Integer, default=0)
 
     # Preferences
     preferred_language = Column(String(10), default="en")

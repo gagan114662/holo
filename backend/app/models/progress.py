@@ -14,22 +14,24 @@ class QuestionAttempt(Base):
     __tablename__ = "question_attempts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False, index=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=True, index=True)
 
     # Attempt data
-    answer = Column(Text, nullable=False)
+    answer_given = Column(Text, nullable=False)  # Renamed from 'answer'
     is_correct = Column(Boolean, nullable=False)
+    is_partial = Column(Boolean, default=False)  # Partial credit given
     score = Column(Integer, nullable=False)  # 0-100
-    time_spent_seconds = Column(Integer, nullable=True)
+    time_taken_seconds = Column(Integer, nullable=True)  # Renamed from 'time_spent_seconds'
+    xp_earned = Column(Integer, default=0)  # XP awarded for this attempt
 
     # Feedback
     feedback = Column(Text, nullable=True)
     hints_used = Column(Integer, default=0)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    attempted_at = Column(DateTime, default=datetime.utcnow, index=True)  # Renamed from 'created_at'
 
     # Relationships
     user = relationship("User", back_populates="attempts")
@@ -44,12 +46,12 @@ class UserProgress(Base):
     __tablename__ = "user_progress"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True)
 
     # Overall stats
     total_sessions = Column(Integer, default=0)
-    total_questions_answered = Column(Integer, default=0)
-    total_correct_answers = Column(Integer, default=0)
+    total_attempted = Column(Integer, default=0)  # Renamed from 'total_questions_answered'
+    total_correct = Column(Integer, default=0)  # Renamed from 'total_correct_answers'
     total_time_spent_minutes = Column(Integer, default=0)
 
     # Streaks
@@ -74,9 +76,9 @@ class UserProgress(Base):
 
     @property
     def accuracy(self) -> float:
-        if self.total_questions_answered == 0:
+        if self.total_attempted == 0:
             return 0.0
-        return self.total_correct_answers / self.total_questions_answered
+        return self.total_correct / self.total_attempted
 
     def __repr__(self):
         return f"<UserProgress user={self.user_id} level={self.level}>"

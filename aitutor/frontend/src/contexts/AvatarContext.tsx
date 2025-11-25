@@ -21,6 +21,7 @@ import {
 } from '../components/avatar/types';
 
 const AVATAR_SERVICE_URL = process.env.REACT_APP_AVATAR_SERVICE_URL || 'http://localhost:8001';
+const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8001';
 
 // Built-in avatars for offline use (same as AvatarSelector)
 const BUILT_IN_AVATARS: Record<string, HistoricalFigure> = {
@@ -155,7 +156,7 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
   useEffect(() => {
     if (session?.session_id && !wsRef.current && !isOfflineMode) {
       try {
-        const ws = new WebSocket(`ws://localhost:8001/ws/avatar/${session.session_id}`);
+        const ws = new WebSocket(`${WS_URL}/ws/avatar/${session.session_id}`);
 
         ws.onopen = () => {
           console.log('Avatar WebSocket connected');

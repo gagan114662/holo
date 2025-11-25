@@ -35,12 +35,13 @@ class Subject(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), unique=True, nullable=False)
+    display_name = Column(String(200), nullable=False)  # User-friendly name
     slug = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     icon = Column(String(50), nullable=True)
     color = Column(String(7), nullable=True)  # Hex color
     parent_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=True)
-    order = Column(Integer, default=0)
+    order_index = Column(Integer, default=0)  # Renamed from 'order'
     is_active = Column(Boolean, default=True)
 
     # Timestamps
@@ -49,19 +50,21 @@ class Subject(Base):
     # Relationships
     parent = relationship("Subject", remote_side=[id], backref="children")
     skills = relationship("Skill", back_populates="subject")
+    questions = relationship("Question", back_populates="subject")
 
 
 class Skill(Base):
     __tablename__ = "skills"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
-    slug = Column(String(200), nullable=False)
+    display_name = Column(String(200), nullable=False)  # User-friendly name
+    slug = Column(String(200), nullable=False, index=True)
     description = Column(Text, nullable=True)
     prerequisites = Column(ARRAY(UUID(as_uuid=True)), default=[])
     difficulty_level = Column(Integer, default=1)  # 1-5
-    order = Column(Integer, default=0)
+    order_index = Column(Integer, default=0)  # Renamed from 'order'
     is_active = Column(Boolean, default=True)
 
     # Timestamps
@@ -71,17 +74,13 @@ class Skill(Base):
     subject = relationship("Subject", back_populates="skills")
     questions = relationship("Question", back_populates="skill")
 
-    # Index for faster queries
-    __table_args__ = (
-        {"schema": None},
-    )
-
 
 class Question(Base):
     __tablename__ = "questions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    skill_id = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False, index=True)
+    skill_id = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False, index=True)
 
     # Content
     content = Column(Text, nullable=False)
@@ -123,6 +122,7 @@ class Question(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    subject = relationship("Subject", back_populates="questions")
     skill = relationship("Skill", back_populates="questions")
     attempts = relationship("QuestionAttempt", back_populates="question")
 
