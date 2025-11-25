@@ -17,14 +17,16 @@
 import { useRef, useState, useEffect } from "react";
 import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
-import { AvatarContextProvider } from "./contexts/AvatarContext";
+import { AvatarContextProvider, useAvatarContext } from "./contexts/AvatarContext";
 import SidePanel from "./components/side-panel/SidePanel";
 import MediaMixerDisplay from "./components/media-mixer-display/MediaMixerDisplay";
 import ScratchpadCapture from "./components/scratchpad-capture/ScratchpadCapture";
 import QuestionDisplay from "./components/question-display/QuestionDisplay";
 import ControlTray from "./components/control-tray/ControlTray";
-import { TalkingAvatar, AvatarSelector } from "./components/avatar";
-import AvatarSpeechHandler from "./components/avatar/AvatarSpeechHandler";
+import { TalkingAvatar, AvatarSelector, AvatarSpeechHandler } from "./components/avatar";
+import { AnswerInput } from "./components/answer-input";
+import { ProgressDashboard } from "./components/progress-dashboard";
+import { LanguageSelector, Language } from "./components/language-selector";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
 import Scratchpad from "./components/scratchpad/Scratchpad";
@@ -40,27 +42,25 @@ const apiOptions: LiveClientOptions = {
 
 type AppView = 'selector' | 'tutoring';
 
-function App() {
-  // this video reference is used for displaying the active stream, whether that is the webcam or screen capture
+// Tutoring Interface Component (extracted for useAvatarContext access)
+function TutoringInterface({
+  socket,
+  onBack,
+}: {
+  socket: WebSocket | null;
+  onBack: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const renderCanvasRef = useRef<HTMLCanvasElement>(null);
-  // either the screen capture, the video or null, if null we hide it
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [mixerStream, setMixerStream] = useState<MediaStream | null>(null);
   const mixerVideoRef = useRef<HTMLVideoElement>(null);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isScratchpadOpen, setScratchpadOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<AppView>('selector');
   const [isAvatarMinimized, setAvatarMinimized] = useState(false);
+  const [isProgressOpen, setProgressOpen] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState('en');
 
-  useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8765');
-    setSocket(ws);
-
-    return () => {
-      ws.close();
-    };
-  }, []);
+  const { currentAvatar } = useAvatarContext();
 
   useEffect(() => {
     if (mixerVideoRef.current && mixerStream) {
@@ -68,92 +68,144 @@ function App() {
     }
   }, [mixerStream]);
 
-  const handleAvatarSelected = () => {
-    setCurrentView('tutoring');
+  const handleLanguageChange = (language: Language) => {
+    setCurrentLanguage(language.code);
+    console.log(`Language changed to: ${language.name}`);
   };
 
-  const handleBackToSelector = () => {
-    setCurrentView('selector');
-  };
+  return (
+    <div className="streaming-console">
+      <SidePanel />
+      <main>
+        {/* Top bar with controls */}
+        <div className="top-bar">
+          <div className="top-bar-left">
+            <button className="back-button" onClick={onBack}>
+              <span className="material-symbols-outlined">arrow_back</span>
+              Change Tutor
+            </button>
+          </div>
+
+          <div className="top-bar-center">
+            {currentAvatar && (
+              <span className="current-tutor">
+                Learning with <strong>{currentAvatar.name}</strong>
+              </span>
+            )}
+          </div>
+
+          <div className="top-bar-right">
+            <LanguageSelector
+              currentLanguage={currentLanguage}
+              onLanguageChange={handleLanguageChange}
+              compact
+            />
+            <button
+              className="icon-button"
+              onClick={() => setProgressOpen(true)}
+              title="View Progress"
+            >
+              <span className="material-symbols-outlined">insights</span>
+            </button>
+            <button
+              className={cn("icon-button", { active: isAvatarMinimized })}
+              onClick={() => setAvatarMinimized(!isAvatarMinimized)}
+            >
+              <span className="material-symbols-outlined">
+                {isAvatarMinimized ? "open_in_full" : "close_fullscreen"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="main-app-area">
+          {/* Avatar Display */}
+          <div className={cn("avatar-panel", { minimized: isAvatarMinimized })}>
+            <TalkingAvatar
+              size={isAvatarMinimized ? "small" : "large"}
+              showName={!isAvatarMinimized}
+            />
+          </div>
+
+          {/* Question, Answer Input, and Scratchpad */}
+          <div className="question-panel">
+            <ScratchpadCapture socket={socket}>
+              <QuestionDisplay />
+              {/* Answer Input - KEY FEATURE */}
+              <AnswerInput
+                questionType="free_text"
+                onSubmit={(answer, isCorrect) => {
+                  console.log('Answer:', answer, 'Correct:', isCorrect);
+                }}
+              />
+              {isScratchpadOpen && (
+                <div className="scratchpad-container">
+                  <Scratchpad />
+                </div>
+              )}
+            </ScratchpadCapture>
+          </div>
+
+          {/* Media Mixer */}
+          <MediaMixerDisplay socket={socket} renderCanvasRef={renderCanvasRef} />
+        </div>
+
+        <ControlTray
+          socket={socket}
+          renderCanvasRef={renderCanvasRef}
+          videoRef={videoRef}
+          supportsVideo={true}
+          onVideoStreamChange={setVideoStream}
+          onMixerStreamChange={setMixerStream}
+          enableEditingSettings={true}
+        >
+          <button onClick={() => setScratchpadOpen(!isScratchpadOpen)}>
+            <span className="material-symbols-outlined">
+              {isScratchpadOpen ? "close" : "edit"}
+            </span>
+          </button>
+        </ControlTray>
+
+        {/* Progress Dashboard Modal */}
+        <ProgressDashboard isOpen={isProgressOpen} onClose={() => setProgressOpen(false)} />
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [currentView, setCurrentView] = useState<AppView>('selector');
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8765');
+    ws.onerror = () => console.log('Media mixer not available');
+    setSocket(ws);
+    return () => ws.close();
+  }, []);
 
   return (
     <div className="App">
       <LiveAPIProvider options={apiOptions}>
         <AvatarContextProvider>
-          {/* Avatar Speech Handler - connects Gemini to Avatar */}
           <AvatarSpeechHandler />
 
           {currentView === 'selector' ? (
-            // Avatar Selection Screen
             <div className="avatar-selection-screen">
-              <AvatarSelector onSelect={handleAvatarSelected} />
+              <div className="selection-header">
+                <h1>HoloTutor</h1>
+                <p>Learn from History's Greatest Minds</p>
+                <div className="feature-badges">
+                  <span className="badge"><span className="material-symbols-outlined">school</span>8+ Tutors</span>
+                  <span className="badge"><span className="material-symbols-outlined">translate</span>50+ Languages</span>
+                  <span className="badge"><span className="material-symbols-outlined">psychology</span>Adaptive Learning</span>
+                  <span className="badge"><span className="material-symbols-outlined">mic</span>Voice Interaction</span>
+                </div>
+              </div>
+              <AvatarSelector onSelect={() => setCurrentView('tutoring')} />
             </div>
           ) : (
-            // Main Tutoring Interface
-            <div className="streaming-console">
-              <SidePanel />
-              <main>
-                {/* Top bar with avatar toggle and back button */}
-                <div className="top-bar">
-                  <button
-                    className="back-button"
-                    onClick={handleBackToSelector}
-                  >
-                    <span className="material-symbols-outlined">arrow_back</span>
-                    Change Tutor
-                  </button>
-                  <button
-                    className={cn("avatar-toggle", { minimized: isAvatarMinimized })}
-                    onClick={() => setAvatarMinimized(!isAvatarMinimized)}
-                  >
-                    <span className="material-symbols-outlined">
-                      {isAvatarMinimized ? "open_in_full" : "close_fullscreen"}
-                    </span>
-                  </button>
-                </div>
-
-                <div className="main-app-area">
-                  {/* Avatar Display */}
-                  <div className={cn("avatar-panel", { minimized: isAvatarMinimized })}>
-                    <TalkingAvatar
-                      size={isAvatarMinimized ? "small" : "large"}
-                      showName={!isAvatarMinimized}
-                    />
-                  </div>
-
-                  {/* Question and Scratchpad Area */}
-                  <div className="question-panel">
-                    <ScratchpadCapture socket={socket}>
-                      <QuestionDisplay />
-                      {isScratchpadOpen && (
-                        <div className="scratchpad-container">
-                          <Scratchpad />
-                        </div>
-                      )}
-                    </ScratchpadCapture>
-                  </div>
-
-                  {/* Media Mixer (webcam preview etc) */}
-                  <MediaMixerDisplay socket={socket} renderCanvasRef={renderCanvasRef} />
-                </div>
-
-                <ControlTray
-                  socket={socket}
-                  renderCanvasRef={renderCanvasRef}
-                  videoRef={videoRef}
-                  supportsVideo={true}
-                  onVideoStreamChange={setVideoStream}
-                  onMixerStreamChange={setMixerStream}
-                  enableEditingSettings={true}
-                >
-                  <button onClick={() => setScratchpadOpen(!isScratchpadOpen)}>
-                    <span className="material-symbols-outlined">
-                      {isScratchpadOpen ? "close" : "edit"}
-                    </span>
-                  </button>
-                </ControlTray>
-              </main>
-            </div>
+            <TutoringInterface socket={socket} onBack={() => setCurrentView('selector')} />
           )}
         </AvatarContextProvider>
       </LiveAPIProvider>
