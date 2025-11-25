@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e3a5f">
+  <title>Offline - HoloTutor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .features {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    .features h2 {
+      font-size: 1rem;
+      margin-bottom: 15px;
+      opacity: 0.9;
+    }
+
+    .features ul {
+      list-style: none;
+    }
+
+    .features li {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+    }
+
+    .features li::before {
+      content: "✓";
+      color: #48bb78;
+      font-weight: bold;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      background: white;
+      color: #1e3a5f;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 30px;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .status.online {
+      color: #48bb78;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+      p {
+        font-size: 1rem;
+      }
+      .icon {
+        font-size: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>Don't worry! HoloTutor works offline too. Your progress is saved and will sync when you're back online.</p>
+
+    <div class="features">
+      <h2>Available Offline:</h2>
+      <ul>
+        <li>Review your saved progress</li>
+        <li>Practice with cached questions</li>
+        <li>View your achievements</li>
+        <li>Access study materials</li>
+      </ul>
+    </div>
+
+    <a href="/" class="btn" onclick="location.reload(); return false;">
+      Try Again
+    </a>
+
+    <p class="status" id="status">Waiting for connection...</p>
+  </div>
+
+  <script>
+    // Check connection status
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      if (navigator.onLine) {
+        statusEl.textContent = 'Connection restored! Refreshing...';
+        statusEl.classList.add('online');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        statusEl.textContent = 'Still offline. Your progress is being saved locally.';
+        statusEl.classList.remove('online');
+      }
+    }
+
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+  </script>
+</body>
+</html>
