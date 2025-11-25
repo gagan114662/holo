@@ -1,0 +1,15 @@
+{
+  "api_keys": {
+    "openrouter": "YOUR_OPENROUTER_API_KEY"
+  },
+  "api_endpoints": {
+    "openrouter": "https://openrouter.ai/api/v1/chat/completions"
+  },
+  "llm_configs": {
+    "question_generator": {
+      "model": "anthropic/claude-3-haiku",
+      "temperature": 0.7,
+      "max_tokens": 500
+    }
+  }
+}
