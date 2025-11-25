@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 from .config import settings
 from .database import engine, Base, get_db
-from .routers import auth, questions, sessions, progress, teachers, avatars
+from .routers import auth, questions, sessions, progress, teachers, avatars, avatar_generation
 
 # Configure logging
 logging.basicConfig(
@@ -144,6 +144,7 @@ app.include_router(sessions.router, prefix="/api/sessions", tags=["Tutoring Sess
 app.include_router(progress.router, prefix="/api/progress", tags=["Progress Tracking"])
 app.include_router(teachers.router, prefix="/api/teachers", tags=["Teacher Dashboard"])
 app.include_router(avatars.router, prefix="/api/avatars", tags=["Avatar System"])
+app.include_router(avatar_generation.router, prefix="/api/avatars/generated", tags=["Avatar Generation"])
 
 
 @app.get("/")
