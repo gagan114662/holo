@@ -15,7 +15,7 @@ from ..models.session import TutoringSession, SessionMessage
 from ..models.question import Subject, Skill
 from ..models.progress import SkillProgress
 from ..schemas.session import SessionCreate, SessionResponse, MessageCreate, MessageResponse, SessionStats
-from .auth import get_current_user
+from .auth import get_current_user, verify_websocket_token
 
 router = APIRouter()
 
@@ -289,9 +289,35 @@ async def get_session_stats(
 async def websocket_session(
     websocket: WebSocket,
     session_id: str,
+    token: str = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """WebSocket endpoint for real-time session updates"""
+    """WebSocket endpoint for real-time session updates (requires authentication)"""
+    # Verify authentication
+    user = await verify_websocket_token(token, db)
+    if not user:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+
+    # Verify user owns this session
+    try:
+        session_uuid = UUID(session_id)
+        result = await db.execute(
+            select(TutoringSession).where(
+                and_(
+                    TutoringSession.id == session_uuid,
+                    TutoringSession.user_id == user.id
+                )
+            )
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            await websocket.close(code=4003, reason="Session not found or access denied")
+            return
+    except ValueError:
+        await websocket.close(code=4000, reason="Invalid session ID")
+        return
+
     await manager.connect(session_id, websocket)
     try:
         while True:

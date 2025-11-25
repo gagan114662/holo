@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-3-haiku-20240307"  # Configurable AI model
     openai_api_key: Optional[str] = None
 
+    # ACE Framework (Agentic Context Engine)
+    ace_enabled: bool = True  # Enable adaptive learning
+    ace_playbook_dir: str = "playbooks"  # Directory for storing learned strategies
+
     # Avatar APIs
     heygen_api_key: Optional[str] = None
     did_api_key: Optional[str] = None

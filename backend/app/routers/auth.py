@@ -76,6 +76,22 @@ async def require_teacher(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+async def verify_websocket_token(token: str, db: AsyncSession) -> User | None:
+    """Verify a JWT token for WebSocket connections (returns None instead of raising)"""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+
+        result = await db.execute(select(User).where(User.id == UUID(user_id)))
+        return result.scalar_one_or_none()
+    except JWTError:
+        return None
+
+
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user"""

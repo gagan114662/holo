@@ -305,3 +305,133 @@ async def submit_answer(
         streak_bonus=streak_bonus,
         mastery_change=0.05 if grade_result["is_correct"] else -0.02
     )
+
+
+# ACE Adaptive Tutoring Endpoints
+
+@router.post("/{question_id}/hint")
+async def get_hint(
+    question_id: UUID,
+    student_attempt: Optional[str] = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get an adaptive hint for a question using ACE"""
+    from ..services.ace_tutoring import ace_tutor
+
+    result = await db.execute(select(Question).where(Question.id == question_id))
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    # Get subject name for context
+    subject_name = "general"
+    if question.subject_id:
+        subject_result = await db.execute(select(Subject).where(Subject.id == question.subject_id))
+        subject = subject_result.scalar_one_or_none()
+        if subject:
+            subject_name = subject.display_name
+
+    hint = await ace_tutor.get_hint(
+        question_content=question.content,
+        correct_answer=question.correct_answer,
+        student_attempt=student_attempt,
+        subject=subject_name,
+        grade_level=user.grade_level or 8,
+    )
+
+    return {"hint": hint}
+
+
+@router.post("/{question_id}/explain")
+async def explain_concept(
+    question_id: UUID,
+    student_question: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get an explanation for a concept related to a question"""
+    from ..services.ace_tutoring import ace_tutor
+
+    result = await db.execute(select(Question).where(Question.id == question_id))
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    # Get skill/topic name
+    topic = "this concept"
+    if question.skill_id:
+        skill_result = await db.execute(select(Skill).where(Skill.id == question.skill_id))
+        skill = skill_result.scalar_one_or_none()
+        if skill:
+            topic = skill.display_name
+
+    explanation = await ace_tutor.explain_concept(
+        topic=topic,
+        question_context=question.content,
+        student_question=student_question,
+        grade_level=user.grade_level or 8,
+    )
+
+    return {"explanation": explanation}
+
+
+@router.get("/tutor/difficulty-recommendation")
+async def get_difficulty_recommendation(
+    subject_id: Optional[UUID] = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get AI-powered difficulty recommendation based on recent performance"""
+    from ..services.ace_tutoring import ace_tutor
+
+    # Get recent attempts
+    query = select(QuestionAttempt).where(
+        QuestionAttempt.user_id == user.id
+    ).order_by(QuestionAttempt.attempted_at.desc()).limit(20)
+
+    result = await db.execute(query)
+    attempts = result.scalars().all()
+
+    if not attempts:
+        return {
+            "recommendation": "maintain",
+            "reason": "Not enough data yet",
+            "confidence": 0.3,
+            "suggested_difficulty": "MEDIUM"
+        }
+
+    # Calculate recent accuracy
+    correct = sum(1 for a in attempts if a.is_correct)
+    accuracy = correct / len(attempts)
+
+    # Get current difficulty from most common recent difficulty
+    # For now, assume MEDIUM as baseline
+    current_difficulty = "MEDIUM"
+
+    recommendation = await ace_tutor.adapt_difficulty_recommendation(
+        recent_accuracy=accuracy,
+        current_difficulty=current_difficulty,
+        questions_attempted=len(attempts),
+    )
+
+    # Map recommendation to difficulty level
+    difficulty_map = {
+        "EASY": {"increase": "MEDIUM", "decrease": "EASY", "maintain": "EASY"},
+        "MEDIUM": {"increase": "HARD", "decrease": "EASY", "maintain": "MEDIUM"},
+        "HARD": {"increase": "HARD", "decrease": "MEDIUM", "maintain": "HARD"},
+    }
+
+    suggested = difficulty_map.get(current_difficulty, {}).get(
+        recommendation.get("recommendation", "maintain"),
+        "MEDIUM"
+    )
+
+    return {
+        **recommendation,
+        "current_accuracy": accuracy,
+        "attempts_analyzed": len(attempts),
+        "suggested_difficulty": suggested
+    }

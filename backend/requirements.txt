@@ -21,6 +21,8 @@ firebase-admin==6.4.0
 # AI/ML
 anthropic==0.18.1
 openai==1.12.0
+ace-framework[all]>=0.1.0
+litellm>=1.0.0
 
 # Utilities
 pydantic==2.6.0
