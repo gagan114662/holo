@@ -8,6 +8,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import './AvatarCreator.scss';
 
 interface AvatarCreatorProps {
+  isOpen: boolean;
   onAvatarCreated: (avatar: CustomAvatar) => void;
   onClose: () => void;
 }
@@ -50,7 +51,7 @@ const PERSONALITY_TEMPLATES = [
   { id: 'challenging', name: 'Challenging', desc: 'Pushes students to excel' },
 ];
 
-const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onAvatarCreated, onClose }) => {
+const AvatarCreator: React.FC<AvatarCreatorProps> = ({ isOpen, onAvatarCreated, onClose }) => {
   const [step, setStep] = useState(1);
   const [photo, setPhoto] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -163,6 +164,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onAvatarCreated, onClose 
       default: return false;
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="avatar-creator-overlay" onClick={onClose}>
