@@ -102,14 +102,39 @@ class StorageService {
   private userId: string;
 
   constructor() {
-    // Generate or retrieve user ID
+    // Generate or retrieve user ID (will be overridden by Firebase auth)
     this.userId = this.getOrCreateUserId();
+  }
+
+  /**
+   * Set user ID from Firebase authentication
+   * This should be called when user signs in
+   */
+  setAuthenticatedUser(firebaseUid: string): void {
+    this.userId = firebaseUid;
+    localStorage.setItem('holotutor_user_id', firebaseUid);
+
+    // Migrate any existing progress to the authenticated user
+    const existingProgress = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
+    if (existingProgress) {
+      const progress = JSON.parse(existingProgress);
+      progress.odUserId = firebaseUid;
+      localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(progress));
+    }
+  }
+
+  /**
+   * Get current user ID (Firebase UID if authenticated, or local ID)
+   */
+  getUserId(): string {
+    return this.userId;
   }
 
   private getOrCreateUserId(): string {
     let userId = localStorage.getItem('holotutor_user_id');
     if (!userId) {
-      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate temporary ID until Firebase auth sets the real one
+      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('holotutor_user_id', userId);
     }
     return userId;

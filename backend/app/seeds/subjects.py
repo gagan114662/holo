@@ -1,0 +1,156 @@
+"""
+Subject and Skill definitions for the curriculum
+"""
+
+SUBJECTS = [
+    {
+        "name": "mathematics",
+        "display_name": "Mathematics",
+        "description": "Numbers, operations, algebra, geometry, and more",
+        "icon": "calculate",
+        "color": "#3B82F6",
+        "skills": [
+            {"name": "addition", "display_name": "Addition", "order": 1},
+            {"name": "subtraction", "display_name": "Subtraction", "order": 2},
+            {"name": "multiplication", "display_name": "Multiplication", "order": 3},
+            {"name": "division", "display_name": "Division", "order": 4},
+            {"name": "fractions", "display_name": "Fractions", "order": 5},
+            {"name": "decimals", "display_name": "Decimals", "order": 6},
+            {"name": "percentages", "display_name": "Percentages", "order": 7},
+            {"name": "algebra_basics", "display_name": "Algebra Basics", "order": 8},
+            {"name": "linear_equations", "display_name": "Linear Equations", "order": 9},
+            {"name": "quadratic_equations", "display_name": "Quadratic Equations", "order": 10},
+            {"name": "geometry_basics", "display_name": "Geometry Basics", "order": 11},
+            {"name": "area_perimeter", "display_name": "Area & Perimeter", "order": 12},
+            {"name": "volume", "display_name": "Volume", "order": 13},
+            {"name": "trigonometry", "display_name": "Trigonometry", "order": 14},
+            {"name": "statistics", "display_name": "Statistics", "order": 15},
+            {"name": "probability", "display_name": "Probability", "order": 16},
+        ]
+    },
+    {
+        "name": "physics",
+        "display_name": "Physics",
+        "description": "Motion, forces, energy, waves, and the laws of nature",
+        "icon": "science",
+        "color": "#8B5CF6",
+        "skills": [
+            {"name": "motion_basics", "display_name": "Motion Basics", "order": 1},
+            {"name": "velocity_acceleration", "display_name": "Velocity & Acceleration", "order": 2},
+            {"name": "forces", "display_name": "Forces", "order": 3},
+            {"name": "newtons_laws", "display_name": "Newton's Laws", "order": 4},
+            {"name": "work_energy", "display_name": "Work & Energy", "order": 5},
+            {"name": "momentum", "display_name": "Momentum", "order": 6},
+            {"name": "gravity", "display_name": "Gravity", "order": 7},
+            {"name": "waves", "display_name": "Waves", "order": 8},
+            {"name": "sound", "display_name": "Sound", "order": 9},
+            {"name": "light_optics", "display_name": "Light & Optics", "order": 10},
+            {"name": "electricity", "display_name": "Electricity", "order": 11},
+            {"name": "magnetism", "display_name": "Magnetism", "order": 12},
+            {"name": "thermodynamics", "display_name": "Thermodynamics", "order": 13},
+        ]
+    },
+    {
+        "name": "chemistry",
+        "display_name": "Chemistry",
+        "description": "Atoms, molecules, reactions, and the composition of matter",
+        "icon": "science",
+        "color": "#10B981",
+        "skills": [
+            {"name": "atomic_structure", "display_name": "Atomic Structure", "order": 1},
+            {"name": "periodic_table", "display_name": "Periodic Table", "order": 2},
+            {"name": "chemical_bonding", "display_name": "Chemical Bonding", "order": 3},
+            {"name": "chemical_equations", "display_name": "Chemical Equations", "order": 4},
+            {"name": "stoichiometry", "display_name": "Stoichiometry", "order": 5},
+            {"name": "states_of_matter", "display_name": "States of Matter", "order": 6},
+            {"name": "solutions", "display_name": "Solutions", "order": 7},
+            {"name": "acids_bases", "display_name": "Acids & Bases", "order": 8},
+            {"name": "redox_reactions", "display_name": "Redox Reactions", "order": 9},
+            {"name": "organic_chemistry", "display_name": "Organic Chemistry Basics", "order": 10},
+        ]
+    },
+    {
+        "name": "biology",
+        "display_name": "Biology",
+        "description": "Life, cells, genetics, evolution, and ecosystems",
+        "icon": "biotech",
+        "color": "#22C55E",
+        "skills": [
+            {"name": "cell_structure", "display_name": "Cell Structure", "order": 1},
+            {"name": "cell_processes", "display_name": "Cell Processes", "order": 2},
+            {"name": "genetics_basics", "display_name": "Genetics Basics", "order": 3},
+            {"name": "dna_rna", "display_name": "DNA & RNA", "order": 4},
+            {"name": "heredity", "display_name": "Heredity", "order": 5},
+            {"name": "evolution", "display_name": "Evolution", "order": 6},
+            {"name": "classification", "display_name": "Classification", "order": 7},
+            {"name": "ecosystems", "display_name": "Ecosystems", "order": 8},
+            {"name": "human_body", "display_name": "Human Body Systems", "order": 9},
+            {"name": "plants", "display_name": "Plant Biology", "order": 10},
+        ]
+    },
+    {
+        "name": "literature",
+        "display_name": "Literature",
+        "description": "Reading comprehension, literary analysis, and writing",
+        "icon": "menu_book",
+        "color": "#F59E0B",
+        "skills": [
+            {"name": "reading_comprehension", "display_name": "Reading Comprehension", "order": 1},
+            {"name": "vocabulary", "display_name": "Vocabulary", "order": 2},
+            {"name": "grammar", "display_name": "Grammar", "order": 3},
+            {"name": "literary_devices", "display_name": "Literary Devices", "order": 4},
+            {"name": "poetry_analysis", "display_name": "Poetry Analysis", "order": 5},
+            {"name": "fiction_analysis", "display_name": "Fiction Analysis", "order": 6},
+            {"name": "essay_writing", "display_name": "Essay Writing", "order": 7},
+            {"name": "creative_writing", "display_name": "Creative Writing", "order": 8},
+        ]
+    },
+    {
+        "name": "history",
+        "display_name": "History",
+        "description": "World history, civilizations, and historical events",
+        "icon": "history_edu",
+        "color": "#EF4444",
+        "skills": [
+            {"name": "ancient_civilizations", "display_name": "Ancient Civilizations", "order": 1},
+            {"name": "classical_era", "display_name": "Classical Era", "order": 2},
+            {"name": "medieval_period", "display_name": "Medieval Period", "order": 3},
+            {"name": "renaissance", "display_name": "Renaissance", "order": 4},
+            {"name": "age_of_exploration", "display_name": "Age of Exploration", "order": 5},
+            {"name": "revolutions", "display_name": "Revolutions", "order": 6},
+            {"name": "world_wars", "display_name": "World Wars", "order": 7},
+            {"name": "modern_history", "display_name": "Modern History", "order": 8},
+        ]
+    },
+    {
+        "name": "computer_science",
+        "display_name": "Computer Science",
+        "description": "Programming, algorithms, and computational thinking",
+        "icon": "code",
+        "color": "#06B6D4",
+        "skills": [
+            {"name": "computational_thinking", "display_name": "Computational Thinking", "order": 1},
+            {"name": "variables_data", "display_name": "Variables & Data Types", "order": 2},
+            {"name": "conditionals", "display_name": "Conditionals", "order": 3},
+            {"name": "loops", "display_name": "Loops", "order": 4},
+            {"name": "functions", "display_name": "Functions", "order": 5},
+            {"name": "arrays_lists", "display_name": "Arrays & Lists", "order": 6},
+            {"name": "algorithms", "display_name": "Basic Algorithms", "order": 7},
+            {"name": "debugging", "display_name": "Debugging", "order": 8},
+        ]
+    },
+    {
+        "name": "philosophy",
+        "display_name": "Philosophy",
+        "description": "Logic, ethics, and critical thinking",
+        "icon": "psychology",
+        "color": "#EC4899",
+        "skills": [
+            {"name": "logic_basics", "display_name": "Logic Basics", "order": 1},
+            {"name": "arguments", "display_name": "Arguments & Reasoning", "order": 2},
+            {"name": "ethics_basics", "display_name": "Ethics Basics", "order": 3},
+            {"name": "philosophical_questions", "display_name": "Philosophical Questions", "order": 4},
+            {"name": "critical_thinking", "display_name": "Critical Thinking", "order": 5},
+        ]
+    },
+]

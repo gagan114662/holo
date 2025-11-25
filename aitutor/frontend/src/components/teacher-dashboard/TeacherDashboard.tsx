@@ -44,11 +44,60 @@ interface TeacherDashboardProps {
   onClose: () => void;
 }
 
-// Generate students from real data + sample students for demo
+// Convert API student data to local Student interface
+const convertStudentData = (apiStudent: any): Student => {
+  // Determine status based on last activity and accuracy
+  let status: Student['status'] = 'offline';
+  const lastActive = apiStudent.last_active || apiStudent.lastActive;
+
+  if (lastActive) {
+    const lastActiveDate = new Date(lastActive);
+    const now = new Date();
+    const minutesSinceActive = (now.getTime() - lastActiveDate.getTime()) / (1000 * 60);
+
+    if (minutesSinceActive < 5) {
+      status = apiStudent.accuracy_rate < 0.6 ? 'struggling' : 'active';
+    } else if (minutesSinceActive < 30) {
+      status = 'idle';
+    }
+  }
+
+  const name = apiStudent.student_name || apiStudent.display_name || 'Student';
+  const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+
+  return {
+    id: apiStudent.student_id || apiStudent.id,
+    name,
+    avatar: initials.slice(0, 2),
+    currentTutor: apiStudent.current_tutor || 'Einstein',
+    status,
+    currentTopic: apiStudent.current_topic || 'General',
+    progress: Math.round((apiStudent.mastery_level || 0) * 100),
+    streak: apiStudent.streak_days || 0,
+    lastActive: lastActive ? formatTimeAgo(lastActive) : 'Never',
+    questionsToday: apiStudent.questions_today || 0,
+    accuracy: Math.round((apiStudent.accuracy_rate || 0) * 100),
+  };
+};
+
+// Helper to format time ago
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const minutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+  if (minutes < 1) return 'Now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+};
+
+// Generate students from real progress data only (no mock students)
 const generateStudentsFromProgress = (progress: UserProgress): Student[] => {
   const students: Student[] = [];
 
-  // Current user as "You (Demo)"
+  // Current user's data
   const totalQuestions = progress.totalQuestionsAnswered;
   const accuracy = totalQuestions > 0
     ? Math.round((progress.totalCorrectAnswers / totalQuestions) * 100)
@@ -65,8 +114,8 @@ const generateStudentsFromProgress = (progress: UserProgress): Student[] => {
 
   students.push({
     id: 'current-user',
-    name: 'You (Demo)',
-    avatar: 'YO',
+    name: 'You',
+    avatar: 'ME',
     currentTutor,
     status: userStatus,
     currentTopic: currentTopic.charAt(0).toUpperCase() + currentTopic.slice(1),
@@ -77,16 +126,8 @@ const generateStudentsFromProgress = (progress: UserProgress): Student[] => {
     accuracy,
   });
 
-  // Add sample students for classroom simulation
-  const sampleStudents: Student[] = [
-    { id: '1', name: 'Emma Johnson', avatar: 'EJ', currentTutor: 'Einstein', status: 'active', currentTopic: 'Quadratic Equations', progress: 78, streak: 5, lastActive: 'Now', questionsToday: 12, accuracy: 85 },
-    { id: '2', name: 'Liam Smith', avatar: 'LS', currentTutor: 'Curie', status: 'struggling', currentTopic: 'Chemical Bonding', progress: 45, streak: 2, lastActive: 'Now', questionsToday: 8, accuracy: 52 },
-    { id: '3', name: 'Olivia Brown', avatar: 'OB', currentTutor: 'Shakespeare', status: 'active', currentTopic: 'Sonnets', progress: 92, streak: 14, lastActive: 'Now', questionsToday: 15, accuracy: 94 },
-    { id: '4', name: 'Noah Davis', avatar: 'ND', currentTutor: 'Ada', status: 'idle', currentTopic: 'Python Loops', progress: 67, streak: 3, lastActive: '5 min ago', questionsToday: 6, accuracy: 78 },
-    { id: '5', name: 'Ava Wilson', avatar: 'AW', currentTutor: 'Socrates', status: 'active', currentTopic: 'Ethics', progress: 81, streak: 8, lastActive: 'Now', questionsToday: 9, accuracy: 89 },
-  ];
-
-  return [...students, ...sampleStudents];
+  // Note: Real students will be fetched from API via getClassroomStudents
+  return students;
 };
 
 // Generate activity feed from real session history
@@ -119,14 +160,8 @@ const generateActivityFeed = (progress: UserProgress): ActivityItem[] => {
     });
   });
 
-  // Add some sample activities to simulate classroom
-  const sampleActivities: ActivityItem[] = [
-    { type: 'success', icon: 'check_circle', message: 'completed "Sonnets" with 94% accuracy', student: 'Olivia', time: '2 min ago' },
-    { type: 'normal', icon: 'play_circle', message: 'started learning Quadratic Equations', student: 'Emma', time: '5 min ago' },
-    { type: 'warning', icon: 'help', message: 'requested a hint for Chemical Bonding', student: 'Liam', time: '8 min ago' },
-  ];
-
-  return [...activities, ...sampleActivities].slice(0, 6);
+  // Note: Real-time activities will come from WebSocket or API polling
+  return activities.slice(0, 6);
 };
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) => {
