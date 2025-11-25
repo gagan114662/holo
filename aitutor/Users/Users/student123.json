@@ -1,0 +1,370 @@
+{
+  "user_id": "student123",
+  "created_at": 1764092136.117604,
+  "last_updated": 1764092200.1327748,
+  "skill_states": {
+    "counting_1_10": {
+      "memory_strength": 0.5468465276049146,
+      "last_practice_time": 1764092200.1315932,
+      "practice_count": 10,
+      "correct_count": 4
+    },
+    "number_recognition": {
+      "memory_strength": 0.6224639752199614,
+      "last_practice_time": 1764092174.0829368,
+      "practice_count": 2,
+      "correct_count": 1
+    },
+    "basic_shapes": {
+      "memory_strength": 0.7387093055019531,
+      "last_practice_time": 1764092178.0935435,
+      "practice_count": 2,
+      "correct_count": 1
+    },
+    "addition_basic": {
+      "memory_strength": 1.1783010417977948,
+      "last_practice_time": 1764092188.1100202,
+      "practice_count": 3,
+      "correct_count": 2
+    },
+    "subtraction_basic": {
+      "memory_strength": 0.9090909090909091,
+      "last_practice_time": 1764092190.113339,
+      "practice_count": 1,
+      "correct_count": 1
+    },
+    "counting_100": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "addition_2digit": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "subtraction_2digit": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "multiplication_intro": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "multiplication_tables": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "division_basic": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "fractions_intro": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "fractions_operations": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "decimals_intro": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "decimals_operations": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "percentages": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "integers": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "ratios_proportions": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "algebraic_expressions": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "linear_equations_1var": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "linear_equations_2var": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "quadratic_intro": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "quadratic_equations": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "polynomial_operations": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "geometric_proofs": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "trigonometry_basic": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "exponentials_logs": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "trigonometry_advanced": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "limits": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    },
+    "derivatives": {
+      "memory_strength": 0.0,
+      "last_practice_time": null,
+      "practice_count": 0,
+      "correct_count": 0
+    }
+  },
+  "question_history": [
+    {
+      "question_id": "k_count_1",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 1.1682510375976562e-05,
+      "timestamp": 1764092166.0715778,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 9.059906005859375e-06,
+      "timestamp": 1764092168.074708,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 7.152557373046875e-06,
+      "timestamp": 1764092170.078025,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_num_1",
+      "skill_ids": [
+        "number_recognition"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 5.936622619628906e-05,
+      "timestamp": 1764092172.0809202,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_num_2",
+      "skill_ids": [
+        "number_recognition"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.67572021484375e-06,
+      "timestamp": 1764092174.0838447,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_shape_1",
+      "skill_ids": [
+        "basic_shapes"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.198883056640625e-06,
+      "timestamp": 1764092176.0910947,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_shape_2",
+      "skill_ids": [
+        "basic_shapes"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 7.152557373046875e-06,
+      "timestamp": 1764092178.0945475,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "g1_add_1",
+      "skill_ids": [
+        "addition_basic"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 6.198883056640625e-06,
+      "timestamp": 1764092180.0976665,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.67572021484375e-06,
+      "timestamp": 1764092182.1009269,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 6.9141387939453125e-06,
+      "timestamp": 1764092184.104314,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "g1_add_2",
+      "skill_ids": [
+        "addition_basic"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.4373016357421875e-06,
+      "timestamp": 1764092186.107827,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "g1_add_1_gen_002",
+      "skill_ids": [
+        "addition_basic"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 6.4373016357421875e-06,
+      "timestamp": 1764092188.1110997,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "g1_sub_1",
+      "skill_ids": [
+        "subtraction_basic"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 1.5735626220703125e-05,
+      "timestamp": 1764092190.1143534,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 7.152557373046875e-06,
+      "timestamp": 1764092192.1180332,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.9141387939453125e-06,
+      "timestamp": 1764092194.1215117,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.4373016357421875e-06,
+      "timestamp": 1764092196.1251915,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": true,
+      "response_time_seconds": 5.7220458984375e-06,
+      "timestamp": 1764092198.1289425,
+      "time_penalty_applied": false
+    },
+    {
+      "question_id": "k_count_2_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001_gen_001",
+      "skill_ids": [
+        "counting_1_10"
+      ],
+      "is_correct": false,
+      "response_time_seconds": 6.198883056640625e-06,
+      "timestamp": 1764092200.1327686,
+      "time_penalty_applied": false
+    }
+  ],
+  "student_notes": {}
+}

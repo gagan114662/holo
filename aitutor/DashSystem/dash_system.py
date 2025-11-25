@@ -51,19 +51,21 @@ class DASHSystem:
     def __init__(self, skills_file: Optional[str] = None, curriculum_file: Optional[str] = None):
         
         # Default file paths relative to the project root
-        self.skills_file_path = skills_file if skills_file else "QuestionsBank/skills.json"
-        self.curriculum_file_path = curriculum_file if curriculum_file else "QuestionsBank/curriculum.json"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+
+        self.skills_file_path = skills_file if skills_file else os.path.join(project_root, "QuestionsBank/skills.json")
+        self.curriculum_file_path = curriculum_file if curriculum_file else os.path.join(project_root, "QuestionsBank/curriculum.json")
 
         self.skills: Dict[str, Skill] = {}
         self.student_states: Dict[str, Dict[str, StudentSkillState]] = {}
         self.questions: Dict[str, Question] = {}
         self.curriculum: Dict = {}
-        self.user_manager = UserManager(users_folder="Users")
+        self.user_manager = UserManager(users_folder="aitutor/Users")
         
         # Initialize the Question Generator Agent
         try:
-            qg_curriculum_path = "QuestionsBank/curriculum.json"
-            self.question_generator = QuestionGeneratorAgent(curriculum_file=qg_curriculum_path)
+            self.question_generator = QuestionGeneratorAgent(curriculum_file=self.curriculum_file_path)
             print("✅ Question Generator Agent initialized.")
         except Exception as e:
             self.question_generator = None

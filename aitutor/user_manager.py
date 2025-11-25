@@ -72,7 +72,7 @@ class UserProfile:
         )
 
 class UserManager:
-    def __init__(self, users_folder: str = "Users"):
+    def __init__(self, users_folder: str = "aitutor/Users"):
         self.users_folder = users_folder
         self.ensure_users_folder_exists()
     

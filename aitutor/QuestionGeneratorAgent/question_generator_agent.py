@@ -271,6 +271,14 @@ Respond in JSON format:
         
         raise ValueError(f"Could not find skill {skill_id} in grade {grade_level}")
 
+    def grade_student_answer(self, student_answer: str, correct_answer: str) -> bool:
+        """
+        Grades the student's answer.
+        This is a simple implementation that checks for exact match (case-insensitive).
+        A more advanced implementation would use an LLM to grade the answer.
+        """
+        return student_answer.strip().lower() == correct_answer.strip().lower()
+
 
 # Test function
 def test_generator():

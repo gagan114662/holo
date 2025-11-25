@@ -24,10 +24,10 @@ class ConfigManager:
     
     def get_llm_config(self, use_case: str) -> Dict[str, Any]:
         """Get LLM configuration for a specific use case"""
-        if use_case not in self.config["llm_models"]:
+        if use_case not in self.config["llm_configs"]:
             raise ValueError(f"Unknown use case: {use_case}")
         
-        return self.config["llm_models"][use_case]
+        return self.config["llm_configs"][use_case]
     
     def get_api_endpoint(self, provider: str) -> str:
         """Get API endpoint for a provider"""
