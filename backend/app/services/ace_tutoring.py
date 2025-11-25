@@ -117,7 +117,7 @@ Provide a helpful hint that guides the student toward the answer without giving 
 Use the Socratic method - ask a guiding question or point them in the right direction."""
 
         try:
-            response = self.ace_agent.ask(prompt)
+            response = await self.ace_agent.ask(prompt)
             return response
         except Exception as e:
             logger.error(f"ACE hint generation failed: {e}")
@@ -146,7 +146,7 @@ Explain this concept clearly and appropriately for a grade {grade_level} student
 Use analogies and examples they would understand."""
 
         try:
-            response = self.ace_agent.ask(prompt)
+            response = await self.ace_agent.ask(prompt)
             return response
         except Exception as e:
             logger.error(f"ACE explanation failed: {e}")
@@ -171,7 +171,7 @@ Generate a brief, personalized encouragement message (1-2 sentences).
 If incorrect, be supportive and motivating. If correct, celebrate appropriately."""
 
         try:
-            response = self.ace_agent.ask(prompt)
+            response = await self.ace_agent.ask(prompt)
             return response
         except Exception as e:
             logger.error(f"ACE encouragement failed: {e}")
@@ -200,7 +200,7 @@ Based on this performance data, recommend:
 Respond in JSON: {{"recommendation": "increase/decrease/maintain", "reason": "...", "confidence": 0.X}}"""
 
         try:
-            response = self.ace_agent.ask(prompt)
+            response = await self.ace_agent.ask(prompt)
             # Parse JSON from response
             import re
             json_match = re.search(r'\{[^}]+\}', response)
@@ -247,16 +247,55 @@ Respond in JSON: {{"recommendation": "increase/decrease/maintain", "reason": "..
     # Fallback methods for when ACE is not available
 
     def _fallback_hint(self, question: str, attempt: Optional[str]) -> str:
-        """Provide a generic hint when ACE is unavailable"""
-        hints = [
+        """Provide a context-aware hint when ACE is unavailable"""
+        import random
+
+        # Analyze question content for better hints
+        question_lower = question.lower()
+
+        # Math-specific hints
+        if any(word in question_lower for word in ['calculate', 'solve', 'equation', 'find x', 'sum', 'product']):
+            math_hints = [
+                "Start by identifying what you need to find and what information is given.",
+                "Try writing out the equation step by step.",
+                "Check if you can simplify any terms first.",
+                "What operation does the problem ask you to perform?",
+            ]
+            return random.choice(math_hints)
+
+        # Science-specific hints
+        if any(word in question_lower for word in ['experiment', 'hypothesis', 'observe', 'react', 'element']):
+            science_hints = [
+                "Think about the scientific principles involved.",
+                "What would you expect to happen based on what you know?",
+                "Consider the cause and effect relationship here.",
+                "Review the key terms in the question.",
+            ]
+            return random.choice(science_hints)
+
+        # Reading/Literature hints
+        if any(word in question_lower for word in ['author', 'character', 'theme', 'passage', 'meaning']):
+            lit_hints = [
+                "Look back at the text for supporting evidence.",
+                "What is the main idea being conveyed?",
+                "Think about the context and setting.",
+                "Consider the author's purpose or message.",
+            ]
+            return random.choice(lit_hints)
+
+        # If student made an attempt, give encouraging guidance
+        if attempt:
+            return f"Good effort! Your answer '{attempt[:50]}...' shows you're thinking. Try looking at the question from a different angle."
+
+        # Generic hints as fallback
+        generic_hints = [
             "Think about what information the question is asking for.",
             "Try breaking the problem into smaller steps.",
             "What do you already know about this topic?",
             "Read the question carefully - what are the key words?",
             "Can you think of a similar problem you've solved before?",
         ]
-        import random
-        return random.choice(hints)
+        return random.choice(generic_hints)
 
     def _fallback_explanation(self, topic: str) -> str:
         """Provide a generic explanation prompt when ACE is unavailable"""

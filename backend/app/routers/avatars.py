@@ -12,8 +12,11 @@ import json
 from ..database import get_db
 from ..config import settings
 from ..services.avatar import AvatarService
-from .auth import get_current_user
+from .auth import get_current_user, verify_websocket_token
 from ..models.user import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 avatar_service = AvatarService()
@@ -224,45 +227,78 @@ async def end_avatar_session(
 @router.websocket("/ws/avatar/{session_id}")
 async def avatar_websocket(
     websocket: WebSocket,
-    session_id: str
+    session_id: str,
+    token: str = None,
+    db: AsyncSession = Depends(get_db)
 ):
-    """WebSocket for real-time avatar lip-sync and viseme data"""
+    """WebSocket for real-time avatar lip-sync and viseme data (requires authentication)"""
+    # Verify authentication
+    user = await verify_websocket_token(token, db)
+    if not user:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+
+    # Validate session exists in avatar service
+    if not avatar_service.active_sessions.get(session_id) and not session_id.startswith("local_"):
+        await websocket.close(code=4003, reason="Avatar session not found")
+        return
+
     await websocket.accept()
-    
+    logger.info(f"Avatar WebSocket connected: user={user.id}, session={session_id}")
+
     try:
         # Register this connection
         avatar_service.register_websocket(session_id, websocket)
-        
+
         while True:
             data = await websocket.receive_json()
-            
-            if data.get("type") == "speak":
+
+            # Validate message structure
+            msg_type = data.get("type")
+            if not msg_type:
+                await websocket.send_json({"type": "error", "message": "Missing message type"})
+                continue
+
+            if msg_type == "speak":
+                text = data.get("text", "")
+                if len(text) > 5000:  # Limit text length
+                    await websocket.send_json({"type": "error", "message": "Text too long (max 5000 chars)"})
+                    continue
+
                 # Generate speech and send viseme data
                 result = await avatar_service.speak(
                     session_id=session_id,
-                    text=data.get("text", ""),
+                    text=text,
                     emotion=data.get("emotion", "neutral")
                 )
                 await websocket.send_json({
                     "type": "speaking_start",
-                    "text": data.get("text", "")
+                    "text": text
                 })
-                
+
                 # If we have viseme data, send it
                 if result.get("visemes"):
                     await websocket.send_json({
                         "type": "visemes",
                         "data": result["visemes"]
                     })
-                
-            elif data.get("type") == "emotion":
+
+            elif msg_type == "emotion":
+                emotion = data.get("emotion", "neutral")
+                valid_emotions = ["neutral", "happy", "sad", "surprised", "angry", "thinking"]
+                if emotion not in valid_emotions:
+                    emotion = "neutral"
                 await websocket.send_json({
                     "type": "emotion_updated",
-                    "emotion": data.get("emotion", "neutral")
+                    "emotion": emotion
                 })
-                
-            elif data.get("type") == "ping":
+
+            elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
-                
+
     except WebSocketDisconnect:
+        logger.info(f"Avatar WebSocket disconnected: session={session_id}")
+        avatar_service.unregister_websocket(session_id)
+    except Exception as e:
+        logger.error(f"Avatar WebSocket error: {e}")
         avatar_service.unregister_websocket(session_id)

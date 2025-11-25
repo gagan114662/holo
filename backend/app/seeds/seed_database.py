@@ -40,6 +40,7 @@ async def seed_subjects_and_skills(session: AsyncSession) -> dict:
         if not subject:
             subject = Subject(
                 name=subject_data["name"],
+                slug=subject_data["name"].lower().replace(" ", "-"),
                 display_name=subject_data["display_name"],
                 description=subject_data["description"],
                 icon=subject_data["icon"],
@@ -66,6 +67,7 @@ async def seed_subjects_and_skills(session: AsyncSession) -> dict:
                 skill = Skill(
                     subject_id=subject.id,
                     name=skill_data["name"],
+                    slug=skill_data["name"].lower().replace(" ", "-"),
                     display_name=skill_data["display_name"],
                     order_index=skill_data["order"],
                 )
@@ -146,28 +148,28 @@ async def seed_questions(session: AsyncSession, subject_map: dict, skill_map: di
             # Check if question already exists (by text)
             result = await session.execute(
                 select(Question).where(
-                    Question.question_text == q_data["question"],
+                    Question.content == q_data["question"],
                     Question.subject_id == subject_id
                 )
             )
             if result.scalar_one_or_none():
                 continue
-            
-            # Build metadata
-            metadata = {}
+
+            # Build extra_data
+            extra_data = {}
             if q_data.get("acceptable_answers"):
-                metadata["acceptable_answers"] = q_data["acceptable_answers"]
-            
+                extra_data["acceptable_answers"] = q_data["acceptable_answers"]
+
             question = Question(
                 subject_id=subject_id,
                 skill_id=skill_id,
-                question_text=q_data["question"],
+                content=q_data["question"],
                 question_type=q_type,
                 difficulty=difficulty,
                 options=q_data.get("options"),
                 correct_answer=q_data["answer"],
                 explanation=q_data["explanation"],
-                metadata=metadata if metadata else None,
+                extra_data=extra_data if extra_data else None,
             )
             session.add(question)
             count += 1

@@ -83,8 +83,8 @@ class GradingService:
         if settings.anthropic_api_key:
             try:
                 import anthropic
-                self.anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-                logger.info("Anthropic client initialized for AI grading")
+                self.anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+                logger.info("Anthropic async client initialized for AI grading")
             except ImportError:
                 logger.warning("anthropic package not installed, AI grading disabled")
     
@@ -446,7 +446,7 @@ Student's code:
 Evaluate if the code would pass the test cases. Respond in JSON:
 {{"is_correct": true/false, "is_partial": true/false, "score": 0.0-1.0, "feedback": "explanation"}}"""
 
-                response = self.anthropic_client.messages.create(
+                response = await self.anthropic_client.messages.create(
                     model=settings.anthropic_model,
                     max_tokens=300,
                     messages=[{"role": "user", "content": prompt}]
@@ -494,7 +494,7 @@ Consider:
 - Be encouraging even when wrong
 """
 
-        response = self.anthropic_client.messages.create(
+        response = await self.anthropic_client.messages.create(
             model=settings.anthropic_model,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]

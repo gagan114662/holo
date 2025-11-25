@@ -336,3 +336,7 @@ async def websocket_session(
                 await manager.send_message(session_id, data)
     except WebSocketDisconnect:
         manager.disconnect(session_id)
+    except Exception as e:
+        # Clean up on any exception
+        logger.error(f"WebSocket error for session {session_id}: {e}")
+        manager.disconnect(session_id)

@@ -336,15 +336,26 @@ async def get_hint(
         if subject:
             subject_name = subject.display_name
 
-    hint = await ace_tutor.get_hint(
-        question_content=question.content,
-        correct_answer=question.correct_answer,
-        student_attempt=student_attempt,
-        subject=subject_name,
-        grade_level=user.grade_level or 8,
-    )
+    try:
+        hint = await ace_tutor.get_hint(
+            question_content=question.content,
+            correct_answer=question.correct_answer,
+            student_attempt=student_attempt,
+            subject=subject_name,
+            grade_level=int(user.grade_level) if user.grade_level and user.grade_level.isdigit() else 8,
+        )
 
-    return {"hint": hint}
+        if not hint:
+            hint = "Let me help you with this question. What part is giving you trouble?"
+
+        return {"hint": hint, "question_id": str(question_id)}
+    except Exception as e:
+        logger.error(f"Error generating hint for question {question_id}: {e}")
+        return {
+            "hint": "I'm having trouble generating a hint right now. Try breaking the problem into smaller steps.",
+            "question_id": str(question_id),
+            "error": True
+        }
 
 
 @router.post("/{question_id}/explain")
@@ -411,8 +422,18 @@ async def get_difficulty_recommendation(
     accuracy = correct / len(attempts)
 
     # Get current difficulty from most common recent difficulty
-    # For now, assume MEDIUM as baseline
-    current_difficulty = "MEDIUM"
+    # Query the difficulties of recent attempts
+    difficulty_counts = {"EASY": 0, "MEDIUM": 0, "HARD": 0}
+    for attempt in attempts:
+        if attempt.question and attempt.question.difficulty:
+            diff_val = attempt.question.difficulty
+            # Map numeric to string (1=EASY, 2=MEDIUM, 3=HARD)
+            diff_map = {1: "EASY", 2: "MEDIUM", 3: "HARD"}
+            diff_name = diff_map.get(diff_val, "MEDIUM")
+            difficulty_counts[diff_name] = difficulty_counts.get(diff_name, 0) + 1
+
+    # Find most common difficulty
+    current_difficulty = max(difficulty_counts.items(), key=lambda x: x[1])[0] if any(difficulty_counts.values()) else "MEDIUM"
 
     recommendation = await ace_tutor.adapt_difficulty_recommendation(
         recent_accuracy=accuracy,

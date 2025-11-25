@@ -5,7 +5,7 @@ Handles teacher dashboard and classroom management
 import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, delete
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -207,10 +207,17 @@ async def delete_classroom(
     
     if not classroom:
         raise HTTPException(status_code=404, detail="Classroom not found")
-    
-    await db.delete(classroom)
+
+    # First delete all enrollments for this classroom
+    await db.execute(
+        delete(Enrollment).where(Enrollment.classroom_id == classroom_id)
+    )
+    # Then delete the classroom
+    await db.execute(
+        delete(Classroom).where(Classroom.id == classroom_id)
+    )
     await db.commit()
-    
+
     return {"message": "Classroom deleted"}
 
 
@@ -496,3 +503,80 @@ async def join_classroom(
         enrolled_at=enrollment.enrolled_at,
         last_activity_at=None
     )
+
+
+@router.delete("/classrooms/{classroom_id}/students/{student_id}")
+async def remove_student(
+    classroom_id: UUID,
+    student_id: UUID,
+    user: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a student from a classroom (teacher only)"""
+    # Verify teacher owns this classroom
+    result = await db.execute(
+        select(Classroom).where(
+            and_(
+                Classroom.id == classroom_id,
+                Classroom.teacher_id == user.id
+            )
+        )
+    )
+    classroom = result.scalar_one_or_none()
+
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+
+    # Find and deactivate enrollment
+    enrollment_result = await db.execute(
+        select(Enrollment).where(
+            and_(
+                Enrollment.classroom_id == classroom_id,
+                Enrollment.student_id == student_id,
+                Enrollment.is_active == True
+            )
+        )
+    )
+    enrollment = enrollment_result.scalar_one_or_none()
+
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Student not enrolled in this classroom")
+
+    # Soft delete - set inactive
+    enrollment.is_active = False
+    enrollment.status = EnrollmentStatus.WITHDRAWN
+    await db.commit()
+
+    logger.info(f"Student {student_id} removed from classroom {classroom_id} by teacher {user.id}")
+    return {"message": "Student removed from classroom"}
+
+
+@router.post("/leave/{classroom_id}")
+async def leave_classroom(
+    classroom_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Leave a classroom (student can leave their own enrollment)"""
+    # Find enrollment
+    result = await db.execute(
+        select(Enrollment).where(
+            and_(
+                Enrollment.classroom_id == classroom_id,
+                Enrollment.student_id == user.id,
+                Enrollment.is_active == True
+            )
+        )
+    )
+    enrollment = result.scalar_one_or_none()
+
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Not enrolled in this classroom")
+
+    # Soft delete - set inactive
+    enrollment.is_active = False
+    enrollment.status = EnrollmentStatus.WITHDRAWN
+    await db.commit()
+
+    logger.info(f"Student {user.id} left classroom {classroom_id}")
+    return {"message": "Successfully left classroom"}

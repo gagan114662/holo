@@ -2,6 +2,7 @@
 Avatar Service
 Handles HeyGen and D-ID API integration for photorealistic avatars
 """
+import asyncio
 import httpx
 import logging
 from typing import Optional
@@ -40,6 +41,9 @@ class AvatarService:
         self.did_client = None
         self.active_sessions: dict[str, dict] = {}
         self.websockets: dict[str, WebSocket] = {}
+        # Asyncio locks for thread-safe dict access
+        self._sessions_lock = asyncio.Lock()
+        self._websockets_lock = asyncio.Lock()
 
         if settings.heygen_api_key:
             self.heygen_client = httpx.AsyncClient(
@@ -214,7 +218,10 @@ class AvatarService:
     async def _did_speak(self, session_id: str, text: str, emotion: str) -> dict:
         """Send speech to D-ID"""
         try:
-            session = self.active_sessions[session_id]
+            session = self.active_sessions.get(session_id)
+            if not session:
+                logger.warning(f"D-ID session not found: {session_id}")
+                return {"status": "error", "message": "Session not found"}
             did_session = session.get("did_session", {})
             
             response = await self.did_client.post(
@@ -285,37 +292,39 @@ class AvatarService:
         return visemes
     
     async def end_session(self, session_id: str):
-        """End an avatar session"""
-        session = self.active_sessions.get(session_id)
-        
-        if session:
-            provider = session.get("provider")
-            
-            if provider == "heygen" and self.heygen_client:
-                try:
-                    await self.heygen_client.post(
-                        "/streaming.stop",
-                        json={"session_id": session_id}
-                    )
-                    logger.info(f"HeyGen session ended: {session_id}")
-                except Exception as e:
-                    logger.warning(f"Error ending HeyGen session: {e}")
-            elif provider == "did" and self.did_client:
-                try:
-                    await self.did_client.delete(f"/talks/streams/{session_id}")
-                    logger.info(f"D-ID session ended: {session_id}")
-                except Exception as e:
-                    logger.warning(f"Error ending D-ID session: {e}")
-            
-            del self.active_sessions[session_id]
-        
-        # Clean up websocket
-        if session_id in self.websockets:
-            del self.websockets[session_id]
-    
+        """End an avatar session (thread-safe)"""
+        async with self._sessions_lock:
+            session = self.active_sessions.get(session_id)
+
+            if session:
+                provider = session.get("provider")
+
+                if provider == "heygen" and self.heygen_client:
+                    try:
+                        await self.heygen_client.post(
+                            "/streaming.stop",
+                            json={"session_id": session_id}
+                        )
+                        logger.info(f"HeyGen session ended: {session_id}")
+                    except Exception as e:
+                        logger.warning(f"Error ending HeyGen session: {e}")
+                elif provider == "did" and self.did_client:
+                    try:
+                        await self.did_client.delete(f"/talks/streams/{session_id}")
+                        logger.info(f"D-ID session ended: {session_id}")
+                    except Exception as e:
+                        logger.warning(f"Error ending D-ID session: {e}")
+
+                del self.active_sessions[session_id]
+
+        # Clean up websocket (separate lock)
+        async with self._websockets_lock:
+            if session_id in self.websockets:
+                del self.websockets[session_id]
+
     def register_websocket(self, session_id: str, websocket: WebSocket):
-        """Register a WebSocket for a session"""
-        # Close existing WebSocket if present
+        """Register a WebSocket for a session (sync for compatibility, use lock in caller)"""
+        # Note: Caller should use async with self._websockets_lock if needed
         existing_ws = self.websockets.get(session_id)
         if existing_ws:
             logger.warning(f"Replacing existing WebSocket for session {session_id}")
@@ -323,7 +332,7 @@ class AvatarService:
         logger.info(f"WebSocket registered for session {session_id}")
 
     def unregister_websocket(self, session_id: str):
-        """Unregister a WebSocket"""
+        """Unregister a WebSocket (sync for compatibility)"""
         if session_id in self.websockets:
             del self.websockets[session_id]
             logger.info(f"WebSocket unregistered for session {session_id}")

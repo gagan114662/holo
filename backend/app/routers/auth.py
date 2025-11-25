@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import bcrypt
 from uuid import UUID
+import secrets
+from collections import defaultdict
+import time
 
 from ..database import get_db
 from ..config import settings
@@ -21,6 +24,30 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 security = HTTPBearer()
+
+# Token blacklist storage (use Redis in production for distributed systems)
+# Stores {jti: expiry_timestamp} to auto-clean expired tokens
+_token_blacklist: dict[str, float] = {}
+_blacklist_cleanup_threshold = 1000  # Clean up when this many tokens are blacklisted
+
+
+def _cleanup_expired_blacklist():
+    """Remove expired tokens from blacklist"""
+    global _token_blacklist
+    now = time.time()
+    _token_blacklist = {jti: exp for jti, exp in _token_blacklist.items() if exp > now}
+
+
+def is_token_blacklisted(jti: str) -> bool:
+    """Check if a token is blacklisted"""
+    if len(_token_blacklist) > _blacklist_cleanup_threshold:
+        _cleanup_expired_blacklist()
+    return jti in _token_blacklist and _token_blacklist[jti] > time.time()
+
+
+def blacklist_token(jti: str, exp: float):
+    """Add a token to the blacklist"""
+    _token_blacklist[jti] = exp
 
 
 def hash_password(password: str) -> str:
@@ -33,15 +60,18 @@ def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
-def create_access_token(user_id: str, expires_delta: timedelta = None) -> str:
-    """Create a JWT access token"""
+def create_access_token(user_id: str, expires_delta: timedelta = None) -> tuple[str, str]:
+    """Create a JWT access token. Returns (token, jti)"""
     expire = datetime.utcnow() + (expires_delta or timedelta(hours=24))
+    jti = secrets.token_urlsafe(16)  # Unique token ID for blacklisting
     payload = {
         "sub": user_id,
         "exp": expire,
-        "iat": datetime.utcnow()
+        "iat": datetime.utcnow(),
+        "jti": jti
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return token, jti
 
 
 async def get_current_user(
@@ -56,15 +86,21 @@ async def get_current_user(
             algorithms=["HS256"]
         )
         user_id = payload.get("sub")
+        jti = payload.get("jti")
+
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
-        
+
+        # Check if token is blacklisted
+        if jti and is_token_blacklisted(jti):
+            raise HTTPException(status_code=401, detail="Token has been revoked")
+
         result = await db.execute(select(User).where(User.id == UUID(user_id)))
         user = result.scalar_one_or_none()
-        
+
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        
+
         return user
     except JWTError as e:
         if "expired" in str(e).lower():
@@ -125,7 +161,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     logger.info(f"User registered successfully: {user.id} ({user.email})")
 
     # Generate token
-    access_token = create_access_token(str(user.id))
+    access_token, _ = create_access_token(str(user.id))
 
     return TokenResponse(
         access_token=access_token,
@@ -157,7 +193,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     logger.info(f"User logged in successfully: {user.id} ({user.email})")
 
     # Generate token
-    access_token = create_access_token(str(user.id))
+    access_token, _ = create_access_token(str(user.id))
 
     return TokenResponse(
         access_token=access_token,
@@ -194,6 +230,25 @@ async def update_me(
 
 
 @router.post("/logout")
-async def logout():
-    """Logout (client should discard token)"""
-    return {"message": "Successfully logged out"}
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Logout and invalidate the current token"""
+    try:
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.jwt_secret_key,
+            algorithms=["HS256"]
+        )
+        jti = payload.get("jti")
+        exp = payload.get("exp", 0)
+
+        if jti:
+            # Add token to blacklist until it expires
+            blacklist_token(jti, exp)
+            logger.info(f"Token blacklisted: {jti[:8]}...")
+
+        return {"message": "Successfully logged out"}
+    except JWTError:
+        # Token is invalid anyway, just return success
+        return {"message": "Successfully logged out"}
