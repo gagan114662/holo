@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Firebase
     firebase_project_id: Optional[str] = None
     firebase_credentials_path: Optional[str] = None
+    firebase_api_key: Optional[str] = None
+    firebase_auth_domain: Optional[str] = None
+    firebase_storage_bucket: Optional[str] = None
+    firebase_messaging_sender_id: Optional[str] = None
+    firebase_app_id: Optional[str] = None
 
     # AI APIs
     anthropic_api_key: Optional[str] = None
@@ -46,6 +51,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra environment variables
 
 
 @lru_cache()

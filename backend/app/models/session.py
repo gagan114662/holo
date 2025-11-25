@@ -1,7 +1,7 @@
 """
 Tutoring session models
 """
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -76,7 +76,7 @@ class SessionMessage(Base):
     question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=True)
     was_correct = Column(Boolean, nullable=True)
     emotion = Column(String(20), nullable=True)
-    metadata = Column(JSONB, default={})
+    extra_data = Column(JSONB, default={})  # Renamed from 'metadata' (SQLAlchemy reserved)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -87,6 +87,3 @@ class SessionMessage(Base):
 
     def __repr__(self):
         return f"<SessionMessage {self.role} - {self.content[:50]}...>"
-
-
-from sqlalchemy import Boolean

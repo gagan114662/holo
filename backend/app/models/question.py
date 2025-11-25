@@ -1,7 +1,7 @@
 """
 Question, Subject, and Skill models
 """
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum, ARRAY
+from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum, ARRAY, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -20,6 +20,14 @@ class QuestionType(str, enum.Enum):
     TRUE_FALSE = "true_false"
     FILL_BLANK = "fill_blank"
     MATCHING = "matching"
+
+
+class DifficultyLevel(str, enum.Enum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+    ADVANCED = "advanced"
+    EXPERT = "expert"
 
 
 class Subject(Base):
@@ -41,9 +49,6 @@ class Subject(Base):
     # Relationships
     parent = relationship("Subject", remote_side=[id], backref="children")
     skills = relationship("Skill", back_populates="subject")
-
-
-from sqlalchemy import Boolean
 
 
 class Skill(Base):
@@ -102,7 +107,7 @@ class Question(Base):
     # Metadata
     tags = Column(ARRAY(String(50)), default=[])
     source = Column(String(100), nullable=True)  # "generated", "imported", "manual"
-    metadata = Column(JSONB, default={})
+    extra_data = Column(JSONB, default={})  # Renamed from 'metadata' (SQLAlchemy reserved)
 
     # Stats
     times_shown = Column(Integer, default=0)

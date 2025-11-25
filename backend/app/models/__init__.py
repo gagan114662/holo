@@ -1,7 +1,7 @@
 """
 Database models package
 """
-from .user import User, UserRole, UserPreferences
+from .user import User, UserRole
 from .question import Question, Subject, Skill, QuestionType, DifficultyLevel
 from .progress import QuestionAttempt, UserProgress, SkillProgress
 from .session import TutoringSession, SessionMessage
@@ -11,7 +11,6 @@ __all__ = [
     # User
     "User",
     "UserRole",
-    "UserPreferences",
     # Question
     "Question",
     "Subject",

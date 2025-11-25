@@ -21,8 +21,8 @@ interface Question {
   hint?: string;
 }
 
-// Curated questions by subject for offline/demo use
-const SAMPLE_QUESTIONS: Record<string, Question[]> = {
+// Offline fallback questions - used when backend API is unavailable
+const OFFLINE_FALLBACK_QUESTIONS: Record<string, Question[]> = {
   physics: [
     { question_id: 'p1', skill_ids: ['motion'], content: 'If a car travels 100 km in 2 hours, what is its average speed?', difficulty: 1, subject: 'physics', type: 'free_text', correctAnswer: '50 km/h', hint: 'Speed = Distance / Time' },
     { question_id: 'p2', skill_ids: ['motion'], content: 'What is Newton\'s First Law of Motion?', difficulty: 2, subject: 'physics', type: 'free_text', hint: 'Think about what happens to an object when no forces act on it' },
@@ -91,13 +91,26 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ onQuestionLoaded }) =
       const subject = getCurrentSubject();
       const progress = storageService.getUserProgress();
 
-      // Try API first
+      // Try backend API first
+      const API_URL = process.env.REACT_APP_DASH_API_URL || 'http://localhost:8000/api';
       try {
-        const response = await fetch(`http://localhost:8000/next-question/demo?subject=${subject}`, {
-          signal: AbortSignal.timeout(3000) // 3 second timeout
+        const response = await fetch(`${API_URL}/questions/next?subject_id=${subject}`, {
+          signal: AbortSignal.timeout(3000), // 3 second timeout
+          headers: { 'Content-Type': 'application/json' }
         });
         if (response.ok) {
-          const data: Question = await response.json();
+          const apiData = await response.json();
+          // Map API response to local Question interface
+          const data: Question = {
+            question_id: apiData.id,
+            skill_ids: apiData.skill_id ? [apiData.skill_id] : [],
+            content: apiData.question_text,
+            difficulty: apiData.difficulty === 'easy' ? 1 : apiData.difficulty === 'medium' ? 2 : 3,
+            subject: apiData.subject_name || subject,
+            type: apiData.question_type || 'free_text',
+            options: apiData.options,
+            hint: apiData.hints?.[0],
+          };
           setQuestion(data);
           setError(null);
           onQuestionLoaded?.(data);
@@ -110,11 +123,11 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ onQuestionLoaded }) =
           return;
         }
       } catch {
-        // API not available, use sample questions
+        // API not available, use offline fallback questions
       }
 
-      // Fallback to sample questions
-      const subjectQuestions = SAMPLE_QUESTIONS[subject] || SAMPLE_QUESTIONS.general;
+      // Offline fallback - use curated questions when API unavailable
+      const subjectQuestions = OFFLINE_FALLBACK_QUESTIONS[subject] || OFFLINE_FALLBACK_QUESTIONS.general;
 
       // Select based on difficulty progression
       const answeredCount = progress.totalQuestionsAnswered;
