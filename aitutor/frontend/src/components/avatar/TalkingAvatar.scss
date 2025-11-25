@@ -1,0 +1,207 @@
+/**
+ * TalkingAvatar Styles
+ * Animated avatar with lip-sync support
+ */
+
+.talking-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+
+  &.small {
+    .avatar-container {
+      width: 150px;
+      height: 150px;
+    }
+  }
+
+  &.medium {
+    .avatar-container {
+      width: 250px;
+      height: 250px;
+    }
+  }
+
+  &.large {
+    .avatar-container {
+      width: 400px;
+      height: 400px;
+    }
+  }
+
+  &.placeholder {
+    .avatar-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      color: white;
+
+      .material-symbols-outlined {
+        font-size: 4rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        text-align: center;
+        padding: 0 1rem;
+      }
+    }
+  }
+}
+
+.avatar-container {
+  position: relative;
+  border-radius: 50%;
+  overflow: visible;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(145deg, #f0e6d8, #e8dcc8);
+
+  .avatar-canvas {
+    display: block;
+    border-radius: 50%;
+  }
+
+  // Emotion glow effect
+  .emotion-glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+
+    &.happy {
+      opacity: 0.3;
+      box-shadow: 0 0 30px 10px rgba(255, 215, 0, 0.5);
+    }
+
+    &.sad {
+      opacity: 0.3;
+      box-shadow: 0 0 30px 10px rgba(70, 130, 180, 0.5);
+    }
+
+    &.surprised {
+      opacity: 0.4;
+      box-shadow: 0 0 30px 10px rgba(255, 165, 0, 0.5);
+    }
+
+    &.thinking {
+      opacity: 0.3;
+      box-shadow: 0 0 30px 10px rgba(138, 43, 226, 0.4);
+    }
+
+    &.encouraging {
+      opacity: 0.3;
+      box-shadow: 0 0 30px 10px rgba(50, 205, 50, 0.5);
+    }
+
+    &.confused {
+      opacity: 0.3;
+      box-shadow: 0 0 30px 10px rgba(255, 140, 0, 0.4);
+    }
+  }
+
+  // Speaking indicator waves
+  .speaking-indicator {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    height: 20px;
+
+    .wave {
+      width: 4px;
+      background: linear-gradient(to top, #667eea, #764ba2);
+      border-radius: 2px;
+      animation: wave 0.8s ease-in-out infinite;
+
+      &:nth-child(1) {
+        height: 8px;
+        animation-delay: 0s;
+      }
+
+      &:nth-child(2) {
+        height: 16px;
+        animation-delay: 0.2s;
+      }
+
+      &:nth-child(3) {
+        height: 8px;
+        animation-delay: 0.4s;
+      }
+    }
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1.2);
+  }
+}
+
+.avatar-info {
+  text-align: center;
+
+  .avatar-name {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #2d3748;
+  }
+
+  .avatar-subject {
+    font-size: 0.9rem;
+    color: #718096;
+    text-transform: capitalize;
+  }
+}
+
+// Animation for idle state
+@keyframes subtle-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.avatar-container:not(.speaking) {
+  animation: subtle-float 4s ease-in-out infinite;
+}
+
+// Pulse animation when avatar is ready
+@keyframes ready-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+}
+
+.avatar-container.ready {
+  animation: ready-pulse 2s ease-out;
+}

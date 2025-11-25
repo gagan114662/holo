@@ -207,3 +207,102 @@ body {
   height: 100%;
   z-index: 10;
 }
+
+/* Avatar Selection Screen */
+.avatar-selection-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  overflow-y: auto;
+}
+
+/* Top Bar for Tutoring View */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  z-index: 100;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent);
+
+  .back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    .material-symbols-outlined {
+      font-size: 1.2rem;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  .avatar-toggle {
+    padding: 0.6rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    &.minimized {
+      background: rgba(102, 126, 234, 0.3);
+    }
+  }
+}
+
+/* Avatar Panel in Tutoring View */
+.avatar-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-width: 300px;
+  transition: all 0.3s ease;
+
+  &.minimized {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    min-width: auto;
+    padding: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Updated main area for avatar integration */
+.streaming-console {
+  .main-app-area {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    gap: 1rem;
+    padding-top: 60px; /* Space for top bar */
+  }
+}
