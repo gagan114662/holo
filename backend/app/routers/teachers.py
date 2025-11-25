@@ -15,7 +15,7 @@ from ..database import get_db
 from ..models.user import User, UserRole
 from ..models.classroom import Classroom, Enrollment, EnrollmentStatus
 from ..models.progress import QuestionAttempt, SkillProgress
-from ..models.question import Subject
+from ..models.question import Subject, Skill
 from ..schemas.classroom import (
     ClassroomCreate, ClassroomResponse, ClassroomUpdate,
     EnrollmentResponse, StudentProgress, ClassroomStats, JoinClassroom
@@ -295,12 +295,20 @@ async def get_classroom_stats(
     total_students = len(enrollments)
     today = datetime.utcnow().date()
     
+    # Pre-fetch all skills for name mapping
+    skills_result = await db.execute(select(Skill))
+    all_skills = {skill.id: skill.display_name for skill in skills_result.scalars().all()}
+
+    # Aggregate skill data for classroom breakdown
+    classroom_skill_data: dict[str, list[float]] = {}  # skill_name -> list of mastery levels
+
     # Calculate stats
     active_today = 0
     total_accuracy = 0
     total_questions = 0
+    total_time_seconds = 0
     student_progress_list = []
-    
+
     for enrollment in enrollments:
         student_result = await db.execute(
             select(User).where(User.id == enrollment.student_id)
@@ -308,7 +316,7 @@ async def get_classroom_stats(
         student = student_result.scalar_one_or_none()
         if not student:
             continue
-        
+
         # Get student's question attempts
         attempts_result = await db.execute(
             select(QuestionAttempt).where(
@@ -316,26 +324,40 @@ async def get_classroom_stats(
             )
         )
         attempts = attempts_result.scalars().all()
-        
+
         questions_attempted = len(attempts)
         questions_correct = sum(1 for a in attempts if a.is_correct)
         accuracy = questions_correct / questions_attempted if questions_attempted > 0 else 0
-        
+
+        # Calculate actual time spent from attempts
+        student_time_seconds = sum(a.time_taken_seconds or 0 for a in attempts)
+        total_time_seconds += student_time_seconds
+
         # Check if active today
         today_attempts = [a for a in attempts if a.attempted_at.date() == today]
         if today_attempts:
             active_today += 1
-        
+
         total_questions += questions_attempted
         total_accuracy += accuracy
-        
-        # Get skill mastery
-        skills_result = await db.execute(
+
+        # Get skill mastery with proper skill names
+        skill_progress_result = await db.execute(
             select(SkillProgress).where(SkillProgress.user_id == enrollment.student_id)
         )
-        skills = skills_result.scalars().all()
-        mastery_levels = {s.skill_id: s.mastery_level for s in skills}
-        
+        skill_progress_list = skill_progress_result.scalars().all()
+
+        # Build mastery_levels with skill names instead of IDs
+        mastery_levels: dict[str, float] = {}
+        for sp in skill_progress_list:
+            skill_name = all_skills.get(sp.skill_id, f"Skill {sp.skill_id}")
+            mastery_levels[skill_name] = sp.mastery_level
+
+            # Aggregate for classroom-wide skill breakdown
+            if skill_name not in classroom_skill_data:
+                classroom_skill_data[skill_name] = []
+            classroom_skill_data[skill_name].append(sp.mastery_level)
+
         student_progress_list.append(StudentProgress(
             student_id=student.id,
             student_name=student.display_name,
@@ -343,20 +365,26 @@ async def get_classroom_stats(
             questions_attempted=questions_attempted,
             questions_correct=questions_correct,
             accuracy_rate=accuracy,
-            time_spent_minutes=questions_attempted * 2,  # Estimate
+            time_spent_minutes=student_time_seconds // 60,  # Actual time from attempts
             last_active=enrollment.last_activity_at,
             streak_days=student.streak_days,
-            mastery_levels={}  # TODO: Convert to skill names
+            mastery_levels=mastery_levels
         ))
-    
+
+    # Calculate classroom-wide skill breakdown (average mastery per skill)
+    skill_breakdown: dict[str, float] = {}
+    for skill_name, mastery_values in classroom_skill_data.items():
+        if mastery_values:
+            skill_breakdown[skill_name] = sum(mastery_values) / len(mastery_values)
+
     # Sort for top/struggling
     sorted_by_accuracy = sorted(student_progress_list, key=lambda x: x.accuracy_rate, reverse=True)
     top_performers = sorted_by_accuracy[:5]
     struggling = sorted_by_accuracy[-5:] if len(sorted_by_accuracy) > 5 else []
-    
+
     avg_accuracy = total_accuracy / total_students if total_students > 0 else 0
     avg_questions = total_questions / total_students if total_students > 0 else 0
-    
+
     return ClassroomStats(
         classroom_id=classroom_id,
         total_students=total_students,
@@ -366,7 +394,7 @@ async def get_classroom_stats(
         total_questions_answered=total_questions,
         top_performers=top_performers,
         struggling_students=struggling,
-        skill_breakdown={}  # TODO: Implement
+        skill_breakdown=skill_breakdown
     )
 
 

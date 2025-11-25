@@ -67,10 +67,20 @@ class AvatarService:
         
         try:
             # Map our avatar IDs to HeyGen avatar IDs
+            # These should be configured based on your HeyGen account's available avatars
             heygen_avatar_map = {
-                "einstein": "josh_lite3_20230714",  # Default HeyGen avatar
-                "curie": "anna_costume1_20230421",
-                # Add more mappings as you configure in HeyGen
+                "einstein": "josh_lite3_20230714",  # Physics tutor
+                "curie": "anna_costume1_20230421",  # Chemistry tutor
+                "shakespeare": "wayne_20240306",    # Literature tutor
+                "hypatia": "anna_costume1_20230421",  # Math tutor
+                "darwin": "josh_lite3_20230714",    # Biology tutor
+                "ada": "anna_costume1_20230421",    # Computer Science tutor
+                "socrates": "wayne_20240306",       # Philosophy tutor
+                "frida": "anna_costume1_20230421",  # Art tutor
+                "newton": "josh_lite3_20230714",    # Physics tutor
+                "aristotle": "wayne_20240306",      # Philosophy tutor
+                "turing": "josh_lite3_20230714",    # Computer Science tutor
+                "davinci": "wayne_20240306",        # Art/Science tutor
             }
             
             heygen_id = heygen_avatar_map.get(avatar_id, "josh_lite3_20230714")
@@ -305,15 +315,39 @@ class AvatarService:
     
     def register_websocket(self, session_id: str, websocket: WebSocket):
         """Register a WebSocket for a session"""
+        # Close existing WebSocket if present
+        existing_ws = self.websockets.get(session_id)
+        if existing_ws:
+            logger.warning(f"Replacing existing WebSocket for session {session_id}")
         self.websockets[session_id] = websocket
-    
+        logger.info(f"WebSocket registered for session {session_id}")
+
     def unregister_websocket(self, session_id: str):
         """Unregister a WebSocket"""
         if session_id in self.websockets:
             del self.websockets[session_id]
-    
-    async def send_to_websocket(self, session_id: str, message: dict):
-        """Send a message to a session's WebSocket"""
+            logger.info(f"WebSocket unregistered for session {session_id}")
+
+    async def send_to_websocket(self, session_id: str, message: dict) -> bool:
+        """
+        Send a message to a session's WebSocket with error handling.
+        Returns True if message was sent successfully, False otherwise.
+        """
         ws = self.websockets.get(session_id)
-        if ws:
+        if not ws:
+            logger.warning(f"No WebSocket found for session {session_id}")
+            return False
+
+        try:
             await ws.send_json(message)
+            return True
+        except RuntimeError as e:
+            # WebSocket is closed or in invalid state
+            logger.warning(f"WebSocket send failed for session {session_id}: {e}")
+            self.unregister_websocket(session_id)
+            return False
+        except Exception as e:
+            # Catch any other WebSocket errors
+            logger.error(f"Unexpected WebSocket error for session {session_id}: {e}")
+            self.unregister_websocket(session_id)
+            return False

@@ -146,7 +146,7 @@ class DIDService {
     sessionId: string,
     answer: RTCSessionDescriptionInit
   ): Promise<void> {
-    await fetch(`${DID_API_URL}/talks/streams/${streamId}/sdp`, {
+    const response = await fetch(`${DID_API_URL}/talks/streams/${streamId}/sdp`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${this.apiKey}`,
@@ -157,6 +157,12 @@ class DIDService {
         session_id: sessionId,
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`D-ID SDP answer failed: ${response.status} - ${errorText}`);
+      throw new Error(`Failed to send SDP answer: ${response.status}`);
+    }
   }
 
   private waitForIceGathering(): Promise<void> {

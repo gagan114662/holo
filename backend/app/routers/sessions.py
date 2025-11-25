@@ -202,31 +202,53 @@ async def get_session_stats(
 ):
     """Get user's session statistics"""
     # Total sessions
-    total_sessions = await db.execute(
+    total_sessions_result = await db.execute(
         select(func.count(TutoringSession.id)).where(TutoringSession.user_id == user.id)
     )
-    
+    total_sessions = total_sessions_result.scalar() or 0
+
     # Total questions and correct
-    total_questions = await db.execute(
+    total_questions_result = await db.execute(
         select(func.sum(TutoringSession.questions_answered)).where(TutoringSession.user_id == user.id)
     )
-    total_correct = await db.execute(
+    total_correct_result = await db.execute(
         select(func.sum(TutoringSession.correct_answers)).where(TutoringSession.user_id == user.id)
     )
-    
-    questions = total_questions.scalar() or 0
-    correct = total_correct.scalar() or 0
-    
+
+    questions = total_questions_result.scalar() or 0
+    correct = total_correct_result.scalar() or 0
+
+    # Calculate total time from session durations
+    total_time_result = await db.execute(
+        select(func.sum(TutoringSession.duration_minutes)).where(TutoringSession.user_id == user.id)
+    )
+    total_time_minutes = total_time_result.scalar() or 0
+
+    # Calculate average session length
+    average_session_length = total_time_minutes / total_sessions if total_sessions > 0 else 0
+
+    # Get favorite subject (most sessions)
+    favorite_subject_result = await db.execute(
+        select(Subject.display_name, func.count(TutoringSession.id).label('count'))
+        .join(TutoringSession, TutoringSession.subject_id == Subject.id)
+        .where(TutoringSession.user_id == user.id)
+        .group_by(Subject.id, Subject.display_name)
+        .order_by(func.count(TutoringSession.id).desc())
+        .limit(1)
+    )
+    favorite_row = favorite_subject_result.first()
+    favorite_subject = favorite_row[0] if favorite_row else None
+
     return SessionStats(
-        total_sessions=total_sessions.scalar() or 0,
+        total_sessions=total_sessions,
         total_questions=questions,
         total_correct=correct,
         accuracy_rate=correct / questions if questions > 0 else 0,
-        total_time_minutes=0,  # TODO: Calculate from session durations
-        average_session_length=0,
-        favorite_subject=None,
-        strongest_skill=None,
-        weakest_skill=None
+        total_time_minutes=total_time_minutes,
+        average_session_length=average_session_length,
+        favorite_subject=favorite_subject,
+        strongest_skill=None,  # Would require complex skill analysis
+        weakest_skill=None     # Would require complex skill analysis
     )
 
 

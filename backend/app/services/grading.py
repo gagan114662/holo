@@ -394,7 +394,7 @@ Evaluate if the code would pass the test cases. Respond in JSON:
 {{"is_correct": true/false, "is_partial": true/false, "score": 0.0-1.0, "feedback": "explanation"}}"""
 
                 response = self.anthropic_client.messages.create(
-                    model="claude-3-haiku-20240307",
+                    model=settings.anthropic_model,
                     max_tokens=300,
                     messages=[{"role": "user", "content": prompt}]
                 )
@@ -434,7 +434,7 @@ Consider:
 """
 
             response = self.anthropic_client.messages.create(
-                model="claude-3-haiku-20240307",
+                model=settings.anthropic_model,
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}]
             )

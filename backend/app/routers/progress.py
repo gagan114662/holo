@@ -74,23 +74,24 @@ async def get_skill_progress(
     db: AsyncSession = Depends(get_db)
 ):
     """Get progress for all skills"""
-    query = select(SkillProgress).where(SkillProgress.user_id == user.id)
-    
+    # Use JOIN to fetch skill data in a single query (avoid N+1)
+    query = (
+        select(SkillProgress, Skill.display_name)
+        .join(Skill, SkillProgress.skill_id == Skill.id)
+        .where(SkillProgress.user_id == user.id)
+    )
+
     if subject_id:
         query = query.where(SkillProgress.subject_id == subject_id)
-    
+
     result = await db.execute(query)
-    skill_progress_list = result.scalars().all()
-    
+    rows = result.all()
+
     responses = []
-    for sp in skill_progress_list:
-        # Get skill name
-        skill_result = await db.execute(select(Skill).where(Skill.id == sp.skill_id))
-        skill = skill_result.scalar_one_or_none()
-        
+    for sp, skill_name in rows:
         responses.append(SkillProgressResponse(
             skill_id=sp.skill_id,
-            skill_name=skill.display_name if skill else "Unknown",
+            skill_name=skill_name or "Unknown",
             subject_id=sp.subject_id,
             mastery_level=sp.mastery_level,
             questions_attempted=sp.questions_attempted,
@@ -99,7 +100,7 @@ async def get_skill_progress(
             next_review=sp.next_review_at,
             streak=sp.current_streak
         ))
-    
+
     return responses
 
 
@@ -124,20 +125,35 @@ async def get_daily_progress(
     
     questions_today = len(today_attempts)
     correct_today = sum(1 for a in today_attempts if a.is_correct)
-    
-    # Estimate time (assume ~30 seconds per question)
-    completed_minutes = questions_today // 2
-    
-    # Get user's daily goal (default 15 minutes)
-    goal_minutes = 15  # TODO: Get from user preferences
-    
+
+    # Calculate actual time from attempts (fall back to estimate if no time data)
+    total_time_seconds = sum(a.time_taken_seconds or 30 for a in today_attempts)
+    completed_minutes = total_time_seconds // 60
+
+    # Default daily goal (could be user-configurable in future)
+    goal_minutes = 15
+
+    # Check streak: user must have practiced today AND yesterday to maintain
+    yesterday_start = today_start - timedelta(days=1)
+    yesterday_result = await db.execute(
+        select(func.count(QuestionAttempt.id)).where(
+            and_(
+                QuestionAttempt.user_id == user.id,
+                QuestionAttempt.attempted_at >= yesterday_start,
+                QuestionAttempt.attempted_at < today_start
+            )
+        )
+    )
+    practiced_yesterday = yesterday_result.scalar() > 0
+    streak_maintained = questions_today > 0 and (practiced_yesterday or user.streak_days == 0)
+
     return DailyGoalProgress(
         goal_minutes=goal_minutes,
         completed_minutes=completed_minutes,
         questions_today=questions_today,
         correct_today=correct_today,
         is_goal_met=completed_minutes >= goal_minutes,
-        streak_maintained=questions_today > 0
+        streak_maintained=streak_maintained
     )
 
 

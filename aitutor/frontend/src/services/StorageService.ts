@@ -107,6 +107,20 @@ class StorageService {
   }
 
   /**
+   * Safely parse JSON with error handling
+   * Returns null if parsing fails instead of throwing
+   */
+  private safeJsonParse<T>(json: string | null, fallback: T | null = null): T | null {
+    if (!json) return fallback;
+    try {
+      return JSON.parse(json) as T;
+    } catch (error) {
+      console.error('Failed to parse JSON from localStorage:', error);
+      return fallback;
+    }
+  }
+
+  /**
    * Set user ID from Firebase authentication
    * This should be called when user signs in
    */
@@ -117,9 +131,11 @@ class StorageService {
     // Migrate any existing progress to the authenticated user
     const existingProgress = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
     if (existingProgress) {
-      const progress = JSON.parse(existingProgress);
-      progress.odUserId = firebaseUid;
-      localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(progress));
+      const progress = this.safeJsonParse<UserProgress>(existingProgress);
+      if (progress) {
+        progress.odUserId = firebaseUid;
+        localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(progress));
+      }
     }
   }
 
@@ -144,8 +160,9 @@ class StorageService {
 
   getUserProgress(): UserProgress {
     const stored = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
-    if (stored) {
-      return JSON.parse(stored);
+    const parsed = this.safeJsonParse<UserProgress>(stored);
+    if (parsed) {
+      return parsed;
     }
 
     // Create default progress
@@ -191,7 +208,7 @@ class StorageService {
 
   getCurrentSession(): CurrentSession | null {
     const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
-    return stored ? JSON.parse(stored) : null;
+    return this.safeJsonParse<CurrentSession>(stored);
   }
 
   updateSession(updates: Partial<CurrentSession>): CurrentSession | null {
@@ -369,7 +386,7 @@ class StorageService {
 
   getStudents(): StudentData[] {
     const stored = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    return stored ? JSON.parse(stored) : [];
+    return this.safeJsonParse<StudentData[]>(stored) || [];
   }
 
   addStudent(student: StudentData): void {
@@ -391,12 +408,13 @@ class StorageService {
 
   getSettings(): Record<string, any> {
     const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return stored ? JSON.parse(stored) : {
+    const defaultSettings = {
       language: 'en',
       voiceEnabled: true,
       darkMode: false,
       ageGroup: 'middle_school',
     };
+    return this.safeJsonParse<Record<string, any>>(stored) || defaultSettings;
   }
 
   saveSetting(key: string, value: any): void {
@@ -409,7 +427,7 @@ class StorageService {
 
   getApiKeys(): { did?: string; heygen?: string; gemini?: string } {
     const stored = localStorage.getItem(STORAGE_KEYS.API_KEYS);
-    return stored ? JSON.parse(stored) : {};
+    return this.safeJsonParse<{ did?: string; heygen?: string; gemini?: string }>(stored) || {};
   }
 
   saveApiKey(service: 'did' | 'heygen' | 'gemini', key: string): void {
