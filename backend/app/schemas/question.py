@@ -12,13 +12,13 @@ from ..models.question import QuestionType, DifficultyLevel
 class QuestionCreate(BaseModel):
     subject_id: UUID
     skill_id: Optional[UUID] = None
-    content: str = Field(..., min_length=10)  # The question text/content
+    content: str = Field(..., min_length=10, max_length=10000)  # The question text/content
     question_type: QuestionType
     difficulty: DifficultyLevel = DifficultyLevel.MEDIUM
-    options: Optional[list[str]] = None  # For multiple choice
-    correct_answer: str
-    explanation: str
-    hints: Optional[list[str]] = None
+    options: Optional[list[str]] = Field(None, max_length=10)  # For multiple choice, max 10 options
+    correct_answer: str = Field(..., min_length=1, max_length=5000)
+    explanation: str = Field(..., min_length=1, max_length=10000)
+    hints: Optional[list[str]] = Field(None, max_length=5)  # Max 5 hints
     extra_data: Optional[dict] = None  # Renamed from metadata
 
     class Config:
@@ -45,8 +45,8 @@ class QuestionResponse(BaseModel):
 
 class AnswerSubmit(BaseModel):
     question_id: UUID
-    answer: str
-    time_taken_seconds: Optional[int] = None
+    answer: str = Field(..., min_length=1, max_length=10000)
+    time_taken_seconds: Optional[int] = Field(None, ge=0, le=3600)  # Max 1 hour
     session_id: Optional[UUID] = None
 
 

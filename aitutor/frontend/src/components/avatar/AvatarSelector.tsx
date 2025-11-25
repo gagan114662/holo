@@ -257,20 +257,22 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
         )}
       </div>
 
-      <div className="selector-controls">
+      <div className="selector-controls" role="search">
         {/* Search */}
         <div className="search-box">
-          <span className="material-symbols-outlined">search</span>
+          <span className="material-symbols-outlined" aria-hidden="true">search</span>
           <input
             type="text"
             placeholder="Search tutors..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search for tutors"
           />
           {searchQuery && (
             <button
               className="clear-search"
               onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
             >
               <span className="material-symbols-outlined">close</span>
             </button>
@@ -278,10 +280,11 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
         </div>
 
         {/* Subject filter */}
-        <div className="subject-filters">
+        <div className="subject-filters" role="group" aria-label="Filter by subject">
           <button
             className={`filter-chip ${!selectedSubject ? 'active' : ''}`}
             onClick={() => setSelectedSubject(null)}
+            aria-pressed={!selectedSubject}
           >
             All Subjects
           </button>
@@ -291,8 +294,9 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                 key={subject}
                 className={`filter-chip ${selectedSubject === subject ? 'active' : ''}`}
                 onClick={() => setSelectedSubject(subject)}
+                aria-pressed={selectedSubject === subject}
               >
-                <span className="material-symbols-outlined">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   {getSubjectIcon(subject)}
                 </span>
                 {subject.replace('_', ' ')}
@@ -302,12 +306,17 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
         </div>
       </div>
 
-      <div className="avatars-grid">
+      <div className="avatars-grid" role="list" aria-label="Available tutors">
         {filteredAvatars.map((avatar) => (
           <div
             key={avatar.id}
             className={`avatar-card ${currentAvatar?.id === avatar.id ? 'selected' : ''}`}
             onClick={() => handleSelectAvatar(avatar)}
+            role="listitem"
+            tabIndex={0}
+            onKeyPress={(e) => e.key === 'Enter' && handleSelectAvatar(avatar)}
+            aria-selected={currentAvatar?.id === avatar.id}
+            aria-label={`Select ${avatar.name} as tutor`}
           >
             <div className="avatar-image">
               {avatar.image && avatar.image.startsWith('http') ? (

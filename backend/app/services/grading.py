@@ -6,13 +6,66 @@ import re
 import json
 import random
 import logging
-from typing import Optional
+import asyncio
+from typing import Optional, TypeVar, Callable
+from functools import wraps
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..models.question import Question, QuestionType
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
+
+
+def retry_with_backoff(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 10.0,
+    exceptions: tuple = (Exception,)
+):
+    """Decorator for retry with exponential backoff"""
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs) -> T:
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        delay = min(base_delay * (2 ** attempt), max_delay)
+                        logger.warning(
+                            f"Retry {attempt + 1}/{max_retries} for {func.__name__} "
+                            f"after {delay:.1f}s due to: {e}"
+                        )
+                        await asyncio.sleep(delay)
+            raise last_exception
+
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs) -> T:
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        delay = min(base_delay * (2 ** attempt), max_delay)
+                        logger.warning(
+                            f"Retry {attempt + 1}/{max_retries} for {func.__name__} "
+                            f"after {delay:.1f}s due to: {e}"
+                        )
+                        import time
+                        time.sleep(delay)
+            raise last_exception
+
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+    return decorator
 
 
 class GradingService:
@@ -418,7 +471,15 @@ Evaluate if the code would pass the test cases. Respond in JSON:
             return None
 
         try:
-            prompt = f"""You are grading a student's answer. Be encouraging but accurate.
+            return await self._call_ai_grading(question, student_answer)
+        except Exception as e:
+            logger.error(f"AI grading error after retries: {e}")
+            return None
+
+    @retry_with_backoff(max_retries=3, base_delay=1.0, exceptions=(Exception,))
+    async def _call_ai_grading(self, question: Question, student_answer: str) -> Optional[dict]:
+        """Call AI API with retry logic"""
+        prompt = f"""You are grading a student's answer. Be encouraging but accurate.
 
 Question: {question.content}
 Correct Answer: {question.correct_answer}
@@ -433,19 +494,15 @@ Consider:
 - Be encouraging even when wrong
 """
 
-            response = self.anthropic_client.messages.create(
-                model=settings.anthropic_model,
-                max_tokens=200,
-                messages=[{"role": "user", "content": prompt}]
-            )
+        response = self.anthropic_client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-            result = self._parse_ai_json_response(response.content[0].text)
-            if result:
-                return result
-
-        except Exception as e:
-            logger.error(f"AI grading error: {e}")
-
+        result = self._parse_ai_json_response(response.content[0].text)
+        if result:
+            return result
         return None
 
     def _parse_ai_json_response(self, text: str) -> Optional[dict]:

@@ -29,6 +29,7 @@ import { ProgressDashboard } from "./components/progress-dashboard";
 import { LanguageSelector, Language } from "./components/language-selector";
 import { AvatarCreator, CustomAvatar } from "./components/avatar-creator";
 import { TeacherDashboard } from "./components/teacher-dashboard";
+import { ErrorBoundary } from "./components/error-boundary";
 import { storageService } from "./services/StorageService";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
@@ -227,12 +228,13 @@ function App() {
   }, []);
 
   return (
-    <div className="App">
-      <LiveAPIProvider options={apiOptions}>
-        <AvatarContextProvider>
-          <AvatarSpeechHandler />
+    <ErrorBoundary>
+      <div className="App">
+        <LiveAPIProvider options={apiOptions}>
+          <AvatarContextProvider>
+            <AvatarSpeechHandler />
 
-          {currentView === 'selector' ? (
+            {currentView === 'selector' ? (
             <div className="avatar-selection-screen">
               <div className="selection-header">
                 <h1>HoloTutor</h1>
@@ -262,10 +264,11 @@ function App() {
             </div>
           ) : (
             <TutoringInterface socket={socket} onBack={() => setCurrentView('selector')} />
-          )}
-        </AvatarContextProvider>
-      </LiveAPIProvider>
-    </div>
+            )}
+          </AvatarContextProvider>
+        </LiveAPIProvider>
+      </div>
+    </ErrorBoundary>
   );
 }
 

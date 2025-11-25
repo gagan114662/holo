@@ -2,6 +2,7 @@
 Authentication Router
 Handles user registration, login, and token management
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from ..database import get_db
 from ..config import settings
 from ..models.user import User, UserRole
 from ..schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, UserUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 security = HTTPBearer()
@@ -95,14 +98,17 @@ async def verify_websocket_token(token: str, db: AsyncSession) -> User | None:
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user"""
+    logger.info(f"Registration attempt for email: {user_data.email}")
+
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
+        logger.warning(f"Registration failed - email already exists: {user_data.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     user = User(
         email=user_data.email,
@@ -111,14 +117,16 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         role=user_data.role,
         grade_level=user_data.grade_level,
     )
-    
+
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
+    logger.info(f"User registered successfully: {user.id} ({user.email})")
+
     # Generate token
     access_token = create_access_token(str(user.id))
-    
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -130,22 +138,27 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     """Login with email and password"""
+    logger.info(f"Login attempt for email: {credentials.email}")
+
     result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
-    
+
     if not user or not verify_password(credentials.password, user.password_hash):
+        logger.warning(f"Failed login attempt for email: {credentials.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    
+
     # Update last login
     user.last_login_at = datetime.utcnow()
     await db.commit()
-    
+
+    logger.info(f"User logged in successfully: {user.id} ({user.email})")
+
     # Generate token
     access_token = create_access_token(str(user.id))
-    
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",

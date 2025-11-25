@@ -2,6 +2,7 @@
 Questions Router
 Handles question fetching, answer submission, and grading
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
@@ -21,6 +22,8 @@ from ..schemas.question import (
 )
 from .auth import get_current_user
 from ..services.grading import GradingService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 grading_service = GradingService()

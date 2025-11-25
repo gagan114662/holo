@@ -2,6 +2,7 @@
 Teachers Router
 Handles teacher dashboard and classroom management
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -21,6 +22,8 @@ from ..schemas.classroom import (
     EnrollmentResponse, StudentProgress, ClassroomStats, JoinClassroom
 )
 from .auth import get_current_user, require_teacher
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -295,65 +298,86 @@ async def get_classroom_stats(
     total_students = len(enrollments)
     today = datetime.utcnow().date()
     
+    logger.info(f"Fetching stats for classroom {classroom_id}")
+
     # Pre-fetch all skills for name mapping
     skills_result = await db.execute(select(Skill))
     all_skills = {skill.id: skill.display_name for skill in skills_result.scalars().all()}
 
-    # Aggregate skill data for classroom breakdown
-    classroom_skill_data: dict[str, list[float]] = {}  # skill_name -> list of mastery levels
+    # Get all student IDs
+    student_ids = [e.student_id for e in enrollments]
+    enrollment_map = {e.student_id: e for e in enrollments}
 
-    # Calculate stats
+    # BATCH QUERY 1: Get all students in one query
+    students_result = await db.execute(
+        select(User).where(User.id.in_(student_ids))
+    )
+    students_map = {s.id: s for s in students_result.scalars().all()}
+
+    # BATCH QUERY 2: Get all attempts for all students with aggregation
+    from sqlalchemy import case
+    attempts_agg = await db.execute(
+        select(
+            QuestionAttempt.user_id,
+            func.count(QuestionAttempt.id).label('total'),
+            func.sum(case((QuestionAttempt.is_correct, 1), else_=0)).label('correct'),
+            func.sum(func.coalesce(QuestionAttempt.time_taken_seconds, 0)).label('time_seconds'),
+            func.sum(case((func.date(QuestionAttempt.attempted_at) == today, 1), else_=0)).label('today_count')
+        )
+        .where(QuestionAttempt.user_id.in_(student_ids))
+        .group_by(QuestionAttempt.user_id)
+    )
+    attempts_map = {row.user_id: row for row in attempts_agg.all()}
+
+    # BATCH QUERY 3: Get all skill progress for all students
+    skill_progress_result = await db.execute(
+        select(SkillProgress).where(SkillProgress.user_id.in_(student_ids))
+    )
+    # Group skill progress by user_id
+    skill_progress_by_user: dict[UUID, list] = {}
+    for sp in skill_progress_result.scalars().all():
+        if sp.user_id not in skill_progress_by_user:
+            skill_progress_by_user[sp.user_id] = []
+        skill_progress_by_user[sp.user_id].append(sp)
+
+    # Aggregate skill data for classroom breakdown
+    classroom_skill_data: dict[str, list[float]] = {}
+
+    # Process results
     active_today = 0
     total_accuracy = 0
     total_questions = 0
     total_time_seconds = 0
     student_progress_list = []
 
-    for enrollment in enrollments:
-        student_result = await db.execute(
-            select(User).where(User.id == enrollment.student_id)
-        )
-        student = student_result.scalar_one_or_none()
+    for student_id in student_ids:
+        student = students_map.get(student_id)
         if not student:
             continue
 
-        # Get student's question attempts
-        attempts_result = await db.execute(
-            select(QuestionAttempt).where(
-                QuestionAttempt.user_id == enrollment.student_id
-            )
-        )
-        attempts = attempts_result.scalars().all()
+        enrollment = enrollment_map[student_id]
+        attempts_data = attempts_map.get(student_id)
 
-        questions_attempted = len(attempts)
-        questions_correct = sum(1 for a in attempts if a.is_correct)
+        questions_attempted = attempts_data.total if attempts_data else 0
+        questions_correct = attempts_data.correct if attempts_data else 0
+        student_time_seconds = attempts_data.time_seconds if attempts_data else 0
+        today_count = attempts_data.today_count if attempts_data else 0
+
         accuracy = questions_correct / questions_attempted if questions_attempted > 0 else 0
 
-        # Calculate actual time spent from attempts
-        student_time_seconds = sum(a.time_taken_seconds or 0 for a in attempts)
         total_time_seconds += student_time_seconds
-
-        # Check if active today
-        today_attempts = [a for a in attempts if a.attempted_at.date() == today]
-        if today_attempts:
+        if today_count > 0:
             active_today += 1
 
         total_questions += questions_attempted
         total_accuracy += accuracy
 
-        # Get skill mastery with proper skill names
-        skill_progress_result = await db.execute(
-            select(SkillProgress).where(SkillProgress.user_id == enrollment.student_id)
-        )
-        skill_progress_list = skill_progress_result.scalars().all()
-
-        # Build mastery_levels with skill names instead of IDs
+        # Build mastery_levels with skill names
         mastery_levels: dict[str, float] = {}
-        for sp in skill_progress_list:
+        for sp in skill_progress_by_user.get(student_id, []):
             skill_name = all_skills.get(sp.skill_id, f"Skill {sp.skill_id}")
             mastery_levels[skill_name] = sp.mastery_level
 
-            # Aggregate for classroom-wide skill breakdown
             if skill_name not in classroom_skill_data:
                 classroom_skill_data[skill_name] = []
             classroom_skill_data[skill_name].append(sp.mastery_level)
@@ -365,7 +389,7 @@ async def get_classroom_stats(
             questions_attempted=questions_attempted,
             questions_correct=questions_correct,
             accuracy_rate=accuracy,
-            time_spent_minutes=student_time_seconds // 60,  # Actual time from attempts
+            time_spent_minutes=student_time_seconds // 60,
             last_active=enrollment.last_activity_at,
             streak_days=student.streak_days,
             mastery_levels=mastery_levels

@@ -2,6 +2,7 @@
 Progress Router
 Handles student progress tracking and analytics
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -18,6 +19,8 @@ from ..schemas.progress import (
     ActivityResponse, LeaderboardEntry, DailyGoalProgress
 )
 from .auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -163,80 +166,84 @@ async def get_leaderboard(
     db: AsyncSession = Depends(get_db)
 ):
     """Get the global leaderboard"""
+    logger.info(f"Fetching leaderboard with limit {limit}")
+
+    # Single query with LEFT JOIN to get users and their progress together
+    from sqlalchemy.orm import aliased
     result = await db.execute(
-        select(User).order_by(User.total_xp.desc()).limit(limit)
+        select(User, UserProgress)
+        .outerjoin(UserProgress, User.id == UserProgress.user_id)
+        .order_by(User.total_xp.desc())
+        .limit(limit)
     )
-    users = result.scalars().all()
-    
-    # Get progress for each user to calculate accuracy
+    rows = result.all()
+
     entries = []
-    for rank, u in enumerate(users, 1):
-        progress_result = await db.execute(
-            select(UserProgress).where(UserProgress.user_id == u.id)
-        )
-        progress = progress_result.scalar_one_or_none()
-        
+    for rank, (user, progress) in enumerate(rows, 1):
         accuracy = 0
         if progress and progress.total_attempted > 0:
             accuracy = progress.total_correct / progress.total_attempted
-        
+
         entries.append(LeaderboardEntry(
             rank=rank,
-            user_id=u.id,
-            display_name=u.display_name,
-            avatar_url=u.avatar_url,
-            total_xp=u.total_xp,
-            streak_days=u.streak_days,
+            user_id=user.id,
+            display_name=user.display_name,
+            avatar_url=user.avatar_url,
+            total_xp=user.total_xp,
+            streak_days=user.streak_days,
             accuracy_rate=accuracy
         ))
-    
+
     return entries
 
 
 async def _get_subject_progress(user_id: UUID, db: AsyncSession) -> list[SubjectProgressResponse]:
-    """Get progress breakdown by subject"""
-    # Get all subjects
-    subjects_result = await db.execute(select(Subject).where(Subject.is_active == True))
-    subjects = subjects_result.scalars().all()
-    
+    """Get progress breakdown by subject (optimized with single aggregation query)"""
+    # Single query to get all progress data with aggregation
+    from sqlalchemy import case
+    progress_query = await db.execute(
+        select(
+            Subject.id,
+            Subject.display_name,
+            func.sum(SkillProgress.questions_attempted).label('total_attempted'),
+            func.sum(SkillProgress.questions_correct).label('total_correct'),
+            func.avg(SkillProgress.mastery_level).label('avg_mastery'),
+            func.sum(case((SkillProgress.mastery_level >= 0.8, 1), else_=0)).label('skills_mastered'),
+            func.count(SkillProgress.id).label('skill_count')
+        )
+        .join(SkillProgress, and_(
+            SkillProgress.subject_id == Subject.id,
+            SkillProgress.user_id == user_id
+        ))
+        .where(Subject.is_active == True)
+        .group_by(Subject.id, Subject.display_name)
+    )
+    progress_rows = progress_query.all()
+
+    # Get total skills per subject in a single query
+    total_skills_query = await db.execute(
+        select(Skill.subject_id, func.count(Skill.id).label('total'))
+        .where(Skill.is_active == True)
+        .group_by(Skill.subject_id)
+    )
+    total_skills_map = {row.subject_id: row.total for row in total_skills_query.all()}
+
     progress_list = []
-    for subject in subjects:
-        # Get skill progress for this subject
-        skill_progress_result = await db.execute(
-            select(SkillProgress).where(
-                and_(
-                    SkillProgress.user_id == user_id,
-                    SkillProgress.subject_id == subject.id
-                )
-            )
-        )
-        skill_progress = skill_progress_result.scalars().all()
-        
-        if not skill_progress:
-            continue
-        
-        total_attempted = sum(sp.questions_attempted for sp in skill_progress)
-        total_correct = sum(sp.questions_correct for sp in skill_progress)
-        avg_mastery = sum(sp.mastery_level for sp in skill_progress) / len(skill_progress) if skill_progress else 0
-        skills_mastered = sum(1 for sp in skill_progress if sp.mastery_level >= 0.8)
-        
-        # Count total skills for subject
-        total_skills_result = await db.execute(
-            select(func.count(Skill.id)).where(Skill.subject_id == subject.id)
-        )
-        total_skills = total_skills_result.scalar() or 0
-        
+    for row in progress_rows:
+        total_attempted = row.total_attempted or 0
+        total_correct = row.total_correct or 0
+
         progress_list.append(SubjectProgressResponse(
-            subject_id=subject.id,
-            subject_name=subject.display_name,
+            subject_id=row.id,
+            subject_name=row.display_name,
             questions_attempted=total_attempted,
             questions_correct=total_correct,
             accuracy_rate=total_correct / total_attempted if total_attempted > 0 else 0,
-            mastery_level=avg_mastery,
-            skills_mastered=skills_mastered,
-            total_skills=total_skills
+            mastery_level=float(row.avg_mastery or 0),
+            skills_mastered=int(row.skills_mastered or 0),
+            total_skills=total_skills_map.get(row.id, 0)
         ))
-    
+
     return progress_list
 
 

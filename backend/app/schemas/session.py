@@ -1,16 +1,16 @@
 """
 Session schemas for tutoring sessions
 """
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Literal
 from uuid import UUID
 from datetime import datetime
 
 
 class SessionCreate(BaseModel):
     subject_id: Optional[UUID] = None
-    avatar_id: str = "einstein"
-    session_type: str = "practice"  # practice, review, assessment
+    avatar_id: str = Field("einstein", min_length=1, max_length=50)
+    session_type: Literal["practice", "review", "assessment"] = "practice"
 
 
 class SessionResponse(BaseModel):

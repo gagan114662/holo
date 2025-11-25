@@ -2,6 +2,7 @@
 Sessions Router
 Handles tutoring session management
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -16,6 +17,8 @@ from ..models.question import Subject, Skill
 from ..models.progress import SkillProgress
 from ..schemas.session import SessionCreate, SessionResponse, MessageCreate, MessageResponse, SessionStats
 from .auth import get_current_user, verify_websocket_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,17 +49,20 @@ async def create_session(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new tutoring session"""
+    logger.info(f"Creating session for user {user.id}, subject: {session_data.subject_id}")
+
     session = TutoringSession(
         user_id=user.id,
         subject_id=session_data.subject_id,
         avatar_id=session_data.avatar_id,
         session_type=session_data.session_type,
     )
-    
+
     db.add(session)
     await db.commit()
     await db.refresh(session)
-    
+
+    logger.info(f"Session created: {session.id}")
     return SessionResponse.model_validate(session)
 
 
