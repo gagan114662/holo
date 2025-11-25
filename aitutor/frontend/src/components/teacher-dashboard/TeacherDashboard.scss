@@ -545,6 +545,131 @@
   }
 }
 
+// Chart Visualizations
+.chart-visual {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  .no-data {
+    color: #a0aec0;
+    text-align: center;
+    font-size: 0.85rem;
+    margin: 0;
+  }
+}
+
+.simple-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 120px;
+  padding: 0.5rem;
+  background: #f7fafc;
+  border-radius: 8px;
+
+  .chart-bar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    max-width: 40px;
+    height: 100%;
+
+    .chart-bar {
+      width: 70%;
+      background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.3s ease;
+    }
+
+    .chart-label {
+      font-size: 0.7rem;
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.difficulty-list,
+.tutor-usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .difficulty-item,
+  .tutor-usage-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .subject-name,
+    .tutor-name {
+      width: 80px;
+      font-size: 0.85rem;
+      color: #4a5568;
+      text-transform: capitalize;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .difficulty-bar-bg,
+    .usage-bar-bg {
+      flex: 1;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+
+      .difficulty-bar,
+      .usage-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+    }
+
+    .difficulty-pct,
+    .usage-count {
+      font-size: 0.75rem;
+      color: #718096;
+      min-width: 50px;
+      text-align: right;
+    }
+  }
+}
+
+.activity-summary {
+  display: flex;
+  justify-content: space-around;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 8px;
+
+  .activity-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+
+    .stat-number {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
 // Settings Content
 .settings-content {
   max-width: 600px;
@@ -605,6 +730,22 @@
           }
         }
       }
+    }
+  }
+
+  .settings-saved-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #c6f6d5;
+    border-radius: 8px;
+    color: #22543d;
+    font-size: 0.85rem;
+
+    .material-symbols-outlined {
+      font-size: 1.1rem;
     }
   }
 }

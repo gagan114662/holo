@@ -164,11 +164,36 @@ const generateActivityFeed = (progress: UserProgress): ActivityItem[] => {
   return activities.slice(0, 6);
 };
 
+// Settings interface for persistence
+interface TeacherSettings {
+  alertOnStruggle: boolean;
+  dailySummaryEmail: boolean;
+  achievementNotifications: boolean;
+  requireCurriculumAlignment: boolean;
+  enableHintSystem: boolean;
+  allowSkipQuestions: boolean;
+}
+
+const defaultSettings: TeacherSettings = {
+  alertOnStruggle: true,
+  dailySummaryEmail: true,
+  achievementNotifications: false,
+  requireCurriculumAlignment: true,
+  enableHintSystem: true,
+  allowSkipQuestions: false,
+};
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) => {
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'analytics' | 'settings'>('overview');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [settings, setSettings] = useState<TeacherSettings>(() => {
+    const saved = localStorage.getItem('teacherSettings');
+    return saved ? JSON.parse(saved) : defaultSettings;
+  });
+  const [interventionStudent, setInterventionStudent] = useState<Student | null>(null);
 
   // Load real progress data
   useEffect(() => {
@@ -177,6 +202,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
       setProgress(userProgress);
     }
   }, [isOpen]);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('teacherSettings', JSON.stringify(settings));
+  }, [settings]);
+
+  // Handle settings toggle
+  const handleSettingChange = (key: keyof TeacherSettings) => {
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Handle intervene action
+  const handleIntervene = (student: Student) => {
+    setInterventionStudent(student);
+    // In production, this would open a video call or chat
+    alert(`Initiating support session with ${student.name}. In production, this would start a live video/chat intervention.`);
+  };
 
   const students = useMemo(() => {
     if (!progress) return [];
@@ -197,9 +239,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
     topPerformers: students.filter(s => s.accuracy > 85).map(s => s.name).slice(0, 3),
   }), [students]);
 
-  const filteredStudents = filterStatus === 'all'
-    ? students
-    : students.filter(s => s.status === filterStatus);
+  const filteredStudents = useMemo(() => {
+    let result = students;
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      result = result.filter(s => s.status === filterStatus);
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        s.name.toLowerCase().includes(query) ||
+        s.currentTopic.toLowerCase().includes(query) ||
+        s.currentTutor.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [students, filterStatus, searchQuery]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -297,7 +356,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                         <div className="alert-stats">
                           <span className="accuracy">{student.accuracy}% accuracy</span>
                         </div>
-                        <button className="intervene-btn">
+                        <button className="intervene-btn" onClick={() => handleIntervene(student)}>
                           <span className="material-symbols-outlined">support_agent</span>
                           Intervene
                         </button>
@@ -339,7 +398,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
               <div className="students-toolbar">
                 <div className="search-box">
                   <span className="material-symbols-outlined">search</span>
-                  <input type="text" placeholder="Search students..." />
+                  <input
+                    type="text"
+                    placeholder="Search students..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
                 <div className="filter-buttons">
                   {['all', 'active', 'struggling', 'idle', 'offline'].map(status => (
@@ -417,30 +481,97 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
               <div className="analytics-grid">
                 <div className="chart-card">
                   <h4>Class Progress Over Time</h4>
-                  <div className="chart-placeholder">
-                    <span className="material-symbols-outlined">show_chart</span>
-                    <p>Progress chart visualization</p>
+                  <div className="chart-visual">
+                    {/* Simple bar chart using CSS */}
+                    <div className="simple-chart progress-chart">
+                      {progress?.sessionHistory.slice(-7).map((session, i) => (
+                        <div key={i} className="chart-bar-container">
+                          <div
+                            className="chart-bar"
+                            style={{
+                              height: `${Math.min((session.correctAnswers / Math.max(session.questionsAnswered, 1)) * 100, 100)}%`
+                            }}
+                            title={`${session.subject}: ${session.correctAnswers}/${session.questionsAnswered}`}
+                          />
+                          <span className="chart-label">D{i + 1}</span>
+                        </div>
+                      )) || <p className="no-data">Complete sessions to see progress</p>}
+                    </div>
                   </div>
                 </div>
                 <div className="chart-card">
                   <h4>Topic Difficulty Analysis</h4>
-                  <div className="chart-placeholder">
-                    <span className="material-symbols-outlined">bar_chart</span>
-                    <p>Topics ranked by difficulty</p>
+                  <div className="chart-visual">
+                    <div className="difficulty-list">
+                      {progress?.subjectProgress && Object.entries(progress.subjectProgress).length > 0 ? (
+                        Object.entries(progress.subjectProgress).map(([subject, data]) => (
+                          <div key={subject} className="difficulty-item">
+                            <span className="subject-name">{subject}</span>
+                            <div className="difficulty-bar-bg">
+                              <div
+                                className="difficulty-bar"
+                                style={{
+                                  width: `${Math.round(((data as any).correct / Math.max((data as any).attempted, 1)) * 100)}%`,
+                                  backgroundColor: ((data as any).correct / Math.max((data as any).attempted, 1)) > 0.7 ? '#48bb78' : '#ed8936'
+                                }}
+                              />
+                            </div>
+                            <span className="difficulty-pct">
+                              {Math.round(((data as any).correct / Math.max((data as any).attempted, 1)) * 100)}%
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="no-data">Answer questions to see difficulty analysis</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="chart-card">
                   <h4>Tutor Usage</h4>
-                  <div className="chart-placeholder">
-                    <span className="material-symbols-outlined">pie_chart</span>
-                    <p>Which tutors are most popular</p>
+                  <div className="chart-visual">
+                    <div className="tutor-usage-list">
+                      {(() => {
+                        const tutorCounts: Record<string, number> = {};
+                        progress?.sessionHistory.forEach(s => {
+                          const tutor = s.avatarName || 'Einstein';
+                          tutorCounts[tutor] = (tutorCounts[tutor] || 0) + 1;
+                        });
+                        const total = Object.values(tutorCounts).reduce((a, b) => a + b, 0) || 1;
+                        return Object.entries(tutorCounts).length > 0 ? (
+                          Object.entries(tutorCounts).map(([tutor, count]) => (
+                            <div key={tutor} className="tutor-usage-item">
+                              <span className="tutor-name">{tutor}</span>
+                              <div className="usage-bar-bg">
+                                <div className="usage-bar" style={{ width: `${(count / total) * 100}%` }} />
+                              </div>
+                              <span className="usage-count">{count} sessions</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="no-data">Start sessions to see tutor usage</p>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
                 <div className="chart-card">
-                  <h4>Engagement Heatmap</h4>
-                  <div className="chart-placeholder">
-                    <span className="material-symbols-outlined">grid_view</span>
-                    <p>Peak learning times</p>
+                  <h4>Daily Activity</h4>
+                  <div className="chart-visual">
+                    <div className="activity-summary">
+                      <div className="activity-stat">
+                        <span className="stat-number">{progress?.totalSessions || 0}</span>
+                        <span className="stat-label">Total Sessions</span>
+                      </div>
+                      <div className="activity-stat">
+                        <span className="stat-number">{progress?.totalQuestionsAnswered || 0}</span>
+                        <span className="stat-label">Questions Answered</span>
+                      </div>
+                      <div className="activity-stat">
+                        <span className="stat-number">{progress?.currentStreak || 0}</span>
+                        <span className="stat-label">Day Streak</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -480,15 +611,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                 <h3>Notification Preferences</h3>
                 <label className="toggle-setting">
                   <span>Alert when student struggles for 3+ minutes</span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    type="checkbox"
+                    checked={settings.alertOnStruggle}
+                    onChange={() => handleSettingChange('alertOnStruggle')}
+                  />
                 </label>
                 <label className="toggle-setting">
                   <span>Daily progress summary email</span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    type="checkbox"
+                    checked={settings.dailySummaryEmail}
+                    onChange={() => handleSettingChange('dailySummaryEmail')}
+                  />
                 </label>
                 <label className="toggle-setting">
                   <span>Achievement notifications</span>
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={settings.achievementNotifications}
+                    onChange={() => handleSettingChange('achievementNotifications')}
+                  />
                 </label>
               </div>
 
@@ -496,16 +639,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                 <h3>Content Controls</h3>
                 <label className="toggle-setting">
                   <span>Require curriculum alignment</span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    type="checkbox"
+                    checked={settings.requireCurriculumAlignment}
+                    onChange={() => handleSettingChange('requireCurriculumAlignment')}
+                  />
                 </label>
                 <label className="toggle-setting">
                   <span>Enable hint system</span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    type="checkbox"
+                    checked={settings.enableHintSystem}
+                    onChange={() => handleSettingChange('enableHintSystem')}
+                  />
                 </label>
                 <label className="toggle-setting">
                   <span>Allow skip questions</span>
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={settings.allowSkipQuestions}
+                    onChange={() => handleSettingChange('allowSkipQuestions')}
+                  />
                 </label>
+              </div>
+
+              <div className="settings-saved-indicator">
+                <span className="material-symbols-outlined">check_circle</span>
+                Settings auto-saved
               </div>
             </div>
           )}
