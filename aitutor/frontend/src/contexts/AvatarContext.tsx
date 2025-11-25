@@ -1,5 +1,6 @@
 /**
  * Avatar Context - Global state management for the HoloAvatar system
+ * Includes offline fallback for when backend API is unavailable
  */
 
 import React, {
@@ -17,10 +18,117 @@ import {
   AvatarSession,
   HistoricalFigure,
   AvatarEmotion,
-  AvatarProvider,
 } from '../components/avatar/types';
 
 const AVATAR_SERVICE_URL = process.env.REACT_APP_AVATAR_SERVICE_URL || 'http://localhost:8001';
+
+// Built-in avatars for offline use (same as AvatarSelector)
+const BUILT_IN_AVATARS: Record<string, HistoricalFigure> = {
+  einstein: {
+    id: 'einstein',
+    name: 'Albert Einstein',
+    subject: 'physics',
+    era: '20th Century',
+    subjects: ['physics', 'mathematics'],
+    greeting: "Imagination is more important than knowledge. Let's explore the wonders of the universe together!",
+    personality: 'Curious, playful, and encouraging. Uses thought experiments and analogies.',
+    voice_id: 'en-US-GuyNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Einstein_1921_by_F_Schmutzer_-_restoration.jpg/440px-Einstein_1921_by_F_Schmutzer_-_restoration.jpg',
+  },
+  curie: {
+    id: 'curie',
+    name: 'Marie Curie',
+    subject: 'chemistry',
+    era: '19th-20th Century',
+    subjects: ['chemistry', 'physics'],
+    greeting: "Nothing in life is to be feared, it is only to be understood. Let's discover science together!",
+    personality: 'Determined, precise, and inspiring. Encourages scientific rigor.',
+    voice_id: 'en-US-JennyNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Marie_Curie_c._1920s.jpg/440px-Marie_Curie_c._1920s.jpg',
+  },
+  shakespeare: {
+    id: 'shakespeare',
+    name: 'William Shakespeare',
+    subject: 'literature',
+    era: '16th-17th Century',
+    subjects: ['literature', 'writing', 'history'],
+    greeting: "All the world's a stage, and all the men and women merely players. Let us write our story together!",
+    personality: 'Eloquent, dramatic, and witty. Uses metaphors and storytelling.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/440px-Shakespeare.jpg',
+  },
+  hypatia: {
+    id: 'hypatia',
+    name: 'Hypatia of Alexandria',
+    subject: 'mathematics',
+    era: 'Ancient',
+    subjects: ['mathematics', 'philosophy', 'astronomy'],
+    greeting: 'Reserve your right to think, for even to think wrongly is better than not to think at all.',
+    personality: 'Wise, patient, and philosophical. Encourages logical thinking.',
+    voice_id: 'en-US-AriaNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Hypatia_portrait.png/440px-Hypatia_portrait.png',
+  },
+  darwin: {
+    id: 'darwin',
+    name: 'Charles Darwin',
+    subject: 'biology',
+    era: '19th Century',
+    subjects: ['biology', 'science'],
+    greeting: 'In the long history of humankind, those who learned to collaborate most effectively have prevailed.',
+    personality: 'Observant, methodical, and gentle. Encourages natural curiosity.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Charles_Darwin_seated_crop.jpg/440px-Charles_Darwin_seated_crop.jpg',
+  },
+  ada: {
+    id: 'ada',
+    name: 'Ada Lovelace',
+    subject: 'computer_science',
+    era: '19th Century',
+    subjects: ['computer_science', 'mathematics'],
+    greeting: 'The Analytical Engine weaves algebraic patterns just as the Jacquard loom weaves flowers and leaves.',
+    personality: 'Visionary, analytical, and poetic. Bridges math and imagination.',
+    voice_id: 'en-GB-SoniaNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Ada_Lovelace_portrait.jpg/440px-Ada_Lovelace_portrait.jpg',
+  },
+  socrates: {
+    id: 'socrates',
+    name: 'Socrates',
+    subject: 'philosophy',
+    era: 'Ancient',
+    subjects: ['philosophy', 'ethics'],
+    greeting: 'The only true wisdom is in knowing you know nothing. Let us question everything together.',
+    personality: 'Questioning, humble, and challenging. Uses Socratic method.',
+    voice_id: 'en-US-GuyNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Socrate_du_Louvre.jpg/440px-Socrate_du_Louvre.jpg',
+  },
+  frida: {
+    id: 'frida',
+    name: 'Frida Kahlo',
+    subject: 'art',
+    era: '20th Century',
+    subjects: ['art', 'history'],
+    greeting: 'I paint myself because I am so often alone and because I am the subject I know best.',
+    personality: 'Passionate, honest, and expressive. Encourages self-expression.',
+    voice_id: 'es-MX-DaliaNeural',
+    avatar_url: '',
+    heygen_avatar_id: '',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/440px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg',
+  },
+};
 
 const initialState: AvatarState = {
   isLoading: false,
@@ -40,33 +148,37 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
   const [currentAvatar, setCurrentAvatar] = useState<HistoricalFigure | null>(null);
   const [session, setSession] = useState<AvatarSession | null>(null);
   const [state, setState] = useState<AvatarState>(initialState);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Connect to avatar WebSocket when session is created
+  // Connect to avatar WebSocket when session is created (only in online mode)
   useEffect(() => {
-    if (session?.session_id && !wsRef.current) {
-      const ws = new WebSocket(`ws://localhost:8001/ws/avatar/${session.session_id}`);
+    if (session?.session_id && !wsRef.current && !isOfflineMode) {
+      try {
+        const ws = new WebSocket(`ws://localhost:8001/ws/avatar/${session.session_id}`);
 
-      ws.onopen = () => {
-        console.log('Avatar WebSocket connected');
-      };
+        ws.onopen = () => {
+          console.log('Avatar WebSocket connected');
+        };
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleWebSocketMessage(data);
-      };
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        };
 
-      ws.onerror = (error) => {
-        console.error('Avatar WebSocket error:', error);
-        setState((prev) => ({ ...prev, error: 'WebSocket connection error' }));
-      };
+        ws.onerror = () => {
+          console.log('WebSocket unavailable, using offline mode');
+          setIsOfflineMode(true);
+        };
 
-      ws.onclose = () => {
-        console.log('Avatar WebSocket closed');
-        wsRef.current = null;
-      };
+        ws.onclose = () => {
+          wsRef.current = null;
+        };
 
-      wsRef.current = ws;
+        wsRef.current = ws;
+      } catch {
+        setIsOfflineMode(true);
+      }
     }
 
     return () => {
@@ -75,7 +187,7 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         wsRef.current = null;
       }
     };
-  }, [session?.session_id]);
+  }, [session?.session_id, isOfflineMode]);
 
   const handleWebSocketMessage = (data: any) => {
     switch (data.type) {
@@ -94,7 +206,6 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         }));
         break;
       case 'visemes':
-        // Viseme data will be handled by the 3D avatar component
         window.dispatchEvent(
           new CustomEvent('avatar-visemes', { detail: data.data })
         );
@@ -118,15 +229,22 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Fetch avatar details
+      // Try to fetch from API first
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
       const avatarResponse = await fetch(
-        `${AVATAR_SERVICE_URL}/avatars/historical/${avatarId}`
+        `${AVATAR_SERVICE_URL}/avatars/historical/${avatarId}`,
+        { signal: controller.signal }
       );
+      clearTimeout(timeoutId);
+
       if (!avatarResponse.ok) {
         throw new Error('Failed to fetch avatar');
       }
       const avatarData: HistoricalFigure = await avatarResponse.json();
       setCurrentAvatar(avatarData);
+      setIsOfflineMode(false);
 
       // Create session
       const sessionResponse = await fetch(`${AVATAR_SERVICE_URL}/sessions/create`, {
@@ -134,8 +252,8 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           avatar_id: avatarId,
-          user_id: 'current_user', // TODO: Get from auth
-          provider: 'local_3d', // Default to local 3D for now
+          user_id: 'current_user',
+          provider: 'local_3d',
         }),
       });
 
@@ -147,25 +265,62 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
       setSession(sessionData);
 
       setState((prev) => ({ ...prev, isLoading: false }));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
+
+      // Speak greeting
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('avatar-speak', {
+          detail: { text: avatarData.greeting, emotion: 'happy' }
+        }));
+      }, 500);
+    } catch {
+      // FALLBACK: Use built-in avatar data
+      console.log('Using offline mode for avatar:', avatarId);
+      setIsOfflineMode(true);
+
+      const builtInAvatar = BUILT_IN_AVATARS[avatarId];
+      if (builtInAvatar) {
+        setCurrentAvatar(builtInAvatar);
+
+        // Create local session
+        const localSession: AvatarSession = {
+          session_id: `local_${Date.now()}`,
+          avatar_id: avatarId,
+          provider: 'local_3d',
+          personality: builtInAvatar.personality,
+          greeting: builtInAvatar.greeting,
+        };
+        setSession(localSession);
+
+        setState((prev) => ({ ...prev, isLoading: false, error: null }));
+
+        // Speak greeting using local TTS
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('avatar-speak', {
+            detail: { text: builtInAvatar.greeting, emotion: 'happy' }
+          }));
+        }, 500);
+      } else {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: `Avatar "${avatarId}" not found`,
+        }));
+      }
     }
   }, []);
 
   const speak = useCallback(
     async (text: string, emotion: AvatarEmotion = 'neutral') => {
-      if (!session) {
-        console.error('No active session');
-        return;
-      }
+      // Set speaking state
+      setState((prev) => ({
+        ...prev,
+        isSpeaking: true,
+        currentText: text,
+        currentEmotion: emotion,
+      }));
 
-      // Send via WebSocket for real-time lip-sync
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
+      if (!isOfflineMode && wsRef.current?.readyState === WebSocket.OPEN) {
+        // Send via WebSocket for real-time lip-sync
         wsRef.current.send(
           JSON.stringify({
             type: 'speak',
@@ -173,7 +328,7 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
             emotion,
           })
         );
-      } else {
+      } else if (!isOfflineMode && session) {
         // Fallback to HTTP
         try {
           await fetch(`${AVATAR_SERVICE_URL}/sessions/${session.session_id}/speak`, {
@@ -185,18 +340,26 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
               emotion,
             }),
           });
-        } catch (error) {
-          console.error('Failed to speak:', error);
+        } catch {
+          // Use local TTS via event
+          window.dispatchEvent(new CustomEvent('avatar-speak', {
+            detail: { text, emotion }
+          }));
         }
+      } else {
+        // Offline mode: dispatch event for VideoAvatar to handle with local TTS
+        window.dispatchEvent(new CustomEvent('avatar-speak', {
+          detail: { text, emotion }
+        }));
       }
     },
-    [session]
+    [session, isOfflineMode]
   );
 
   const setEmotion = useCallback((emotion: AvatarEmotion) => {
     setState((prev) => ({ ...prev, currentEmotion: emotion }));
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!isOfflineMode && wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
           type: 'emotion',
@@ -204,16 +367,16 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         })
       );
     }
-  }, []);
+  }, [isOfflineMode]);
 
   const endSession = useCallback(async () => {
-    if (session) {
+    if (session && !isOfflineMode) {
       try {
         await fetch(`${AVATAR_SERVICE_URL}/sessions/${session.session_id}`, {
           method: 'DELETE',
         });
-      } catch (error) {
-        console.error('Failed to end session:', error);
+      } catch {
+        // Ignore errors when ending session
       }
     }
 
@@ -225,7 +388,7 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
       wsRef.current.close();
       wsRef.current = null;
     }
-  }, [session]);
+  }, [session, isOfflineMode]);
 
   const value: AvatarContextType = {
     currentAvatar,
