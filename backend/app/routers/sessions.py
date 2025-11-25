@@ -208,10 +208,10 @@ async def get_session_stats(
     
     # Total questions and correct
     total_questions = await db.execute(
-        select(func.sum(TutoringSession.questions_attempted)).where(TutoringSession.user_id == user.id)
+        select(func.sum(TutoringSession.questions_answered)).where(TutoringSession.user_id == user.id)
     )
     total_correct = await db.execute(
-        select(func.sum(TutoringSession.questions_correct)).where(TutoringSession.user_id == user.id)
+        select(func.sum(TutoringSession.correct_answers)).where(TutoringSession.user_id == user.id)
     )
     
     questions = total_questions.scalar() or 0

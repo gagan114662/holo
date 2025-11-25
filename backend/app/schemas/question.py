@@ -12,15 +12,15 @@ from ..models.question import QuestionType, DifficultyLevel
 class QuestionCreate(BaseModel):
     subject_id: UUID
     skill_id: Optional[UUID] = None
-    question_text: str = Field(..., min_length=10)
+    content: str = Field(..., min_length=10)  # The question text/content
     question_type: QuestionType
     difficulty: DifficultyLevel = DifficultyLevel.MEDIUM
     options: Optional[list[str]] = None  # For multiple choice
     correct_answer: str
     explanation: str
     hints: Optional[list[str]] = None
-    metadata: Optional[dict] = None
-    
+    extra_data: Optional[dict] = None  # Renamed from metadata
+
     class Config:
         use_enum_values = True
 
@@ -31,13 +31,13 @@ class QuestionResponse(BaseModel):
     subject_name: Optional[str] = None
     skill_id: Optional[UUID] = None
     skill_name: Optional[str] = None
-    question_text: str
+    content: str  # The question text/content
     question_type: QuestionType
     difficulty: DifficultyLevel
     options: Optional[list[str]] = None
     hints: Optional[list[str]] = None
     # Note: correct_answer is NOT exposed in response for security
-    
+
     class Config:
         from_attributes = True
         use_enum_values = True

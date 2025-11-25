@@ -88,13 +88,16 @@ class SkillProgress(Base):
     __tablename__ = "skill_progress"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_progress_id = Column(UUID(as_uuid=True), ForeignKey("user_progress.id"), nullable=False)
-    skill_id = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False)
+    user_progress_id = Column(UUID(as_uuid=True), ForeignKey("user_progress.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    skill_id = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False, index=True)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False, index=True)
 
     # Mastery
     mastery_level = Column(Float, default=0.0)  # 0.0 - 1.0
     questions_attempted = Column(Integer, default=0)
     questions_correct = Column(Integer, default=0)
+    current_streak = Column(Integer, default=0)  # Streak for this skill
 
     # Spaced repetition
     next_review_at = Column(DateTime, nullable=True)
@@ -108,7 +111,9 @@ class SkillProgress(Base):
 
     # Relationships
     user_progress = relationship("UserProgress", back_populates="skill_progress")
+    user = relationship("User")
     skill = relationship("Skill")
+    subject = relationship("Subject")
 
     @property
     def accuracy(self) -> float:
