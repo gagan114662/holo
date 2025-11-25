@@ -7,12 +7,17 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
 import { useAvatarContext } from '../../contexts/AvatarContext';
+import { storageService } from '../../services/StorageService';
+import { ttsService } from '../../services/TTSService';
 import './AnswerInput.scss';
 
 interface AnswerInputProps {
   questionId?: string;
   questionType?: 'multiple_choice' | 'free_text' | 'numeric' | 'drawing';
   options?: string[];
+  skill?: string;
+  subject?: string;
+  correctAnswer?: string;
   onSubmit?: (answer: string, isCorrect?: boolean) => void;
   disabled?: boolean;
 }
@@ -23,11 +28,14 @@ const AnswerInput: React.FC<AnswerInputProps> = ({
   questionId,
   questionType = 'free_text',
   options = [],
+  skill,
+  subject,
+  correctAnswer,
   onSubmit,
   disabled = false,
 }) => {
   const { client, connected } = useLiveAPIContext();
-  const { speak, setEmotion, currentAvatar } = useAvatarContext();
+  const { setEmotion, currentAvatar } = useAvatarContext();
 
   const [answer, setAnswer] = useState('');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -35,6 +43,12 @@ const AnswerInput: React.FC<AnswerInputProps> = ({
   const [feedback, setFeedback] = useState<{ type: 'correct' | 'incorrect' | 'partial'; message: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const speakFeedback = async (text: string) => {
+    if (currentAvatar) {
+      await ttsService.speakAsAvatar(text, currentAvatar.id);
+    }
+  };
 
   const handleSubmit = useCallback(async () => {
     const submittedAnswer = questionType === 'multiple_choice'
@@ -46,61 +60,91 @@ const AnswerInput: React.FC<AnswerInputProps> = ({
     setIsSubmitting(true);
     setFeedback(null);
 
+    let isCorrect = false;
+
     try {
-      // Submit to DASH API for evaluation
-      const response = await fetch(`${DASH_API_URL}/submit-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: '1', // TODO: Get from auth
-          question_id: questionId,
-          answer: submittedAnswer,
-        }),
+      // First try to evaluate locally if we have the correct answer
+      if (correctAnswer) {
+        const normalizedSubmitted = submittedAnswer.toLowerCase().trim();
+        const normalizedCorrect = correctAnswer.toLowerCase().trim();
+        isCorrect = normalizedSubmitted === normalizedCorrect ||
+                   normalizedCorrect.includes(normalizedSubmitted) ||
+                   normalizedSubmitted.includes(normalizedCorrect);
+      }
+
+      // Try DASH API for evaluation
+      try {
+        const response = await fetch(`${DASH_API_URL}/submit-answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: storageService.getUserProgress().odUserId,
+            question_id: questionId,
+            answer: submittedAnswer,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          isCorrect = result.correct;
+
+          if (result.correct) {
+            setEmotion('happy');
+            setFeedback({ type: 'correct', message: result.feedback || 'Excellent work!' });
+            speakFeedback("That's correct! Well done!");
+          } else if (result.partial) {
+            setEmotion('encouraging');
+            setFeedback({ type: 'partial', message: result.feedback || 'You\'re on the right track!' });
+            speakFeedback("You're getting there! Let me help you.");
+          } else {
+            setEmotion('encouraging');
+            setFeedback({ type: 'incorrect', message: result.feedback || 'Let\'s try again.' });
+            speakFeedback("Not quite. Let me explain.");
+          }
+        }
+      } catch {
+        // API not available, use local evaluation
+        if (isCorrect) {
+          setEmotion('happy');
+          setFeedback({ type: 'correct', message: 'Great job! That\'s the right answer!' });
+          speakFeedback("Excellent! That's correct!");
+        } else if (correctAnswer) {
+          setEmotion('encouraging');
+          setFeedback({ type: 'incorrect', message: `Not quite. The answer was: ${correctAnswer}` });
+          speakFeedback("Not quite, but don't worry. Let's learn from this!");
+        } else {
+          // Send to Gemini for evaluation if available
+          if (connected && client) {
+            client.send({
+              text: `The student answered: "${submittedAnswer}". Please evaluate and provide feedback.`,
+            });
+          }
+          setFeedback({ type: 'partial', message: 'Answer submitted! Let me check that for you.' });
+        }
+      }
+
+      // Record the answer in storage
+      storageService.recordAnswer(isCorrect, skill, subject);
+
+      // Add to conversation history
+      storageService.addConversationMessage({
+        role: 'user',
+        content: submittedAnswer,
+        timestamp: new Date().toISOString(),
+        questionId,
+        wasCorrect: isCorrect,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-
-        // Update avatar emotion and provide feedback
-        if (result.correct) {
-          setEmotion('happy');
-          setFeedback({ type: 'correct', message: result.feedback || 'Excellent work!' });
-          speak("That's correct! Well done!", 'happy');
-        } else if (result.partial) {
-          setEmotion('encouraging');
-          setFeedback({ type: 'partial', message: result.feedback || 'You\'re on the right track!' });
-          speak("You're getting there! Let me help you.", 'encouraging');
-        } else {
-          setEmotion('encouraging');
-          setFeedback({ type: 'incorrect', message: result.feedback || 'Let\'s try again.' });
-          speak("Not quite. Let me explain.", 'thinking');
-        }
-
-        onSubmit?.(submittedAnswer, result.correct);
-      } else {
-        // If API fails, use Gemini to evaluate
-        if (connected && client) {
-          client.send({
-            text: `The student answered: "${submittedAnswer}". Please evaluate if this is correct and provide helpful feedback.`,
-          });
-        }
-        onSubmit?.(submittedAnswer);
-      }
+      onSubmit?.(submittedAnswer, isCorrect);
     } catch (error) {
       console.error('Failed to submit answer:', error);
-      // Fallback to just sending to Gemini
-      if (connected && client) {
-        client.send({
-          text: `The student answered: "${submittedAnswer}". Please evaluate this answer.`,
-        });
-      }
       onSubmit?.(submittedAnswer);
     } finally {
       setIsSubmitting(false);
       setAnswer('');
       setSelectedOption(null);
     }
-  }, [answer, selectedOption, questionType, options, questionId, connected, client, setEmotion, speak, onSubmit]);
+  }, [answer, selectedOption, questionType, options, questionId, correctAnswer, skill, subject, connected, client, setEmotion, currentAvatar, onSubmit]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

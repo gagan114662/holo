@@ -4,7 +4,8 @@
  * Real-time monitoring, intervention alerts, analytics
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { storageService, UserProgress, SessionSummary } from '../../services/StorageService';
 import './TeacherDashboard.scss';
 
 interface Student {
@@ -30,35 +31,136 @@ interface ClassStats {
   topPerformers: string[];
 }
 
+interface ActivityItem {
+  type: 'success' | 'warning' | 'milestone' | 'normal';
+  icon: string;
+  message: string;
+  student: string;
+  time: string;
+}
+
 interface TeacherDashboardProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Sample data - in production, this comes from API
-const SAMPLE_STUDENTS: Student[] = [
-  { id: '1', name: 'Emma Johnson', avatar: 'EJ', currentTutor: 'Einstein', status: 'active', currentTopic: 'Quadratic Equations', progress: 78, streak: 5, lastActive: 'Now', questionsToday: 12, accuracy: 85 },
-  { id: '2', name: 'Liam Smith', avatar: 'LS', currentTutor: 'Curie', status: 'struggling', currentTopic: 'Chemical Bonding', progress: 45, streak: 2, lastActive: 'Now', questionsToday: 8, accuracy: 52 },
-  { id: '3', name: 'Olivia Brown', avatar: 'OB', currentTutor: 'Shakespeare', status: 'active', currentTopic: 'Sonnets', progress: 92, streak: 14, lastActive: 'Now', questionsToday: 15, accuracy: 94 },
-  { id: '4', name: 'Noah Davis', avatar: 'ND', currentTutor: 'Ada', status: 'idle', currentTopic: 'Python Loops', progress: 67, streak: 3, lastActive: '5 min ago', questionsToday: 6, accuracy: 78 },
-  { id: '5', name: 'Ava Wilson', avatar: 'AW', currentTutor: 'Socrates', status: 'active', currentTopic: 'Ethics', progress: 81, streak: 8, lastActive: 'Now', questionsToday: 9, accuracy: 89 },
-  { id: '6', name: 'James Miller', avatar: 'JM', currentTutor: 'Einstein', status: 'offline', currentTopic: 'Relativity', progress: 34, streak: 0, lastActive: '2 hours ago', questionsToday: 0, accuracy: 65 },
-];
+// Generate students from real data + sample students for demo
+const generateStudentsFromProgress = (progress: UserProgress): Student[] => {
+  const students: Student[] = [];
+
+  // Current user as "You (Demo)"
+  const totalQuestions = progress.totalQuestionsAnswered;
+  const accuracy = totalQuestions > 0
+    ? Math.round((progress.totalCorrectAnswers / totalQuestions) * 100)
+    : 0;
+
+  // Determine status based on accuracy
+  let userStatus: Student['status'] = 'active';
+  if (accuracy < 60 && totalQuestions > 3) userStatus = 'struggling';
+  else if (progress.totalSessions === 0) userStatus = 'offline';
+
+  const lastSession = progress.sessionHistory[progress.sessionHistory.length - 1];
+  const currentTutor = lastSession?.avatarName || 'Einstein';
+  const currentTopic = lastSession?.subject || 'General';
+
+  students.push({
+    id: 'current-user',
+    name: 'You (Demo)',
+    avatar: 'YO',
+    currentTutor,
+    status: userStatus,
+    currentTopic: currentTopic.charAt(0).toUpperCase() + currentTopic.slice(1),
+    progress: Math.min(Math.round(progress.totalCorrectAnswers * 5), 100),
+    streak: progress.currentStreak,
+    lastActive: 'Now',
+    questionsToday: totalQuestions,
+    accuracy,
+  });
+
+  // Add sample students for classroom simulation
+  const sampleStudents: Student[] = [
+    { id: '1', name: 'Emma Johnson', avatar: 'EJ', currentTutor: 'Einstein', status: 'active', currentTopic: 'Quadratic Equations', progress: 78, streak: 5, lastActive: 'Now', questionsToday: 12, accuracy: 85 },
+    { id: '2', name: 'Liam Smith', avatar: 'LS', currentTutor: 'Curie', status: 'struggling', currentTopic: 'Chemical Bonding', progress: 45, streak: 2, lastActive: 'Now', questionsToday: 8, accuracy: 52 },
+    { id: '3', name: 'Olivia Brown', avatar: 'OB', currentTutor: 'Shakespeare', status: 'active', currentTopic: 'Sonnets', progress: 92, streak: 14, lastActive: 'Now', questionsToday: 15, accuracy: 94 },
+    { id: '4', name: 'Noah Davis', avatar: 'ND', currentTutor: 'Ada', status: 'idle', currentTopic: 'Python Loops', progress: 67, streak: 3, lastActive: '5 min ago', questionsToday: 6, accuracy: 78 },
+    { id: '5', name: 'Ava Wilson', avatar: 'AW', currentTutor: 'Socrates', status: 'active', currentTopic: 'Ethics', progress: 81, streak: 8, lastActive: 'Now', questionsToday: 9, accuracy: 89 },
+  ];
+
+  return [...students, ...sampleStudents];
+};
+
+// Generate activity feed from real session history
+const generateActivityFeed = (progress: UserProgress): ActivityItem[] => {
+  const activities: ActivityItem[] = [];
+
+  // Add activities from session history
+  progress.sessionHistory.slice(-5).reverse().forEach((session, index) => {
+    const timeAgo = index === 0 ? 'Just now' : `${(index + 1) * 5} min ago`;
+
+    if (session.correctAnswers > 0) {
+      activities.push({
+        type: 'success',
+        icon: 'check_circle',
+        message: `completed "${session.subject}" with ${Math.round((session.correctAnswers / session.questionsAnswered) * 100)}% accuracy`,
+        student: 'You',
+        time: timeAgo,
+      });
+    }
+  });
+
+  // Add achievement activities
+  progress.achievements.slice(-3).forEach((achievement, index) => {
+    activities.push({
+      type: 'milestone',
+      icon: 'emoji_events',
+      message: `earned "${achievement.name}" badge!`,
+      student: 'You',
+      time: `${10 + index * 5} min ago`,
+    });
+  });
+
+  // Add some sample activities to simulate classroom
+  const sampleActivities: ActivityItem[] = [
+    { type: 'success', icon: 'check_circle', message: 'completed "Sonnets" with 94% accuracy', student: 'Olivia', time: '2 min ago' },
+    { type: 'normal', icon: 'play_circle', message: 'started learning Quadratic Equations', student: 'Emma', time: '5 min ago' },
+    { type: 'warning', icon: 'help', message: 'requested a hint for Chemical Bonding', student: 'Liam', time: '8 min ago' },
+  ];
+
+  return [...activities, ...sampleActivities].slice(0, 6);
+};
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) => {
-  const [students, setStudents] = useState<Student[]>(SAMPLE_STUDENTS);
+  const [progress, setProgress] = useState<UserProgress | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'analytics' | 'settings'>('overview');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  const stats: ClassStats = {
+  // Load real progress data
+  useEffect(() => {
+    if (isOpen) {
+      const userProgress = storageService.getUserProgress();
+      setProgress(userProgress);
+    }
+  }, [isOpen]);
+
+  const students = useMemo(() => {
+    if (!progress) return [];
+    return generateStudentsFromProgress(progress);
+  }, [progress]);
+
+  const activityFeed = useMemo(() => {
+    if (!progress) return [];
+    return generateActivityFeed(progress);
+  }, [progress]);
+
+  const stats: ClassStats = useMemo(() => ({
     totalStudents: students.length,
     activeNow: students.filter(s => s.status === 'active').length,
-    averageProgress: Math.round(students.reduce((a, b) => a + b.progress, 0) / students.length),
-    averageAccuracy: Math.round(students.reduce((a, b) => a + b.accuracy, 0) / students.length),
+    averageProgress: students.length > 0 ? Math.round(students.reduce((a, b) => a + b.progress, 0) / students.length) : 0,
+    averageAccuracy: students.length > 0 ? Math.round(students.reduce((a, b) => a + b.accuracy, 0) / students.length) : 0,
     strugglingCount: students.filter(s => s.status === 'struggling').length,
     topPerformers: students.filter(s => s.accuracy > 85).map(s => s.name).slice(0, 3),
-  };
+  }), [students]);
 
   const filteredStudents = filterStatus === 'all'
     ? students
@@ -177,26 +279,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                   Live Activity
                 </h3>
                 <div className="activity-feed">
-                  <div className="activity-item success">
-                    <span className="material-symbols-outlined">check_circle</span>
-                    <span><strong>Olivia</strong> completed "Sonnets" with 94% accuracy</span>
-                    <span className="time">Just now</span>
-                  </div>
-                  <div className="activity-item">
-                    <span className="material-symbols-outlined">play_circle</span>
-                    <span><strong>Emma</strong> started learning Quadratic Equations</span>
-                    <span className="time">2 min ago</span>
-                  </div>
-                  <div className="activity-item warning">
-                    <span className="material-symbols-outlined">help</span>
-                    <span><strong>Liam</strong> requested a hint for Chemical Bonding</span>
-                    <span className="time">5 min ago</span>
-                  </div>
-                  <div className="activity-item milestone">
-                    <span className="material-symbols-outlined">emoji_events</span>
-                    <span><strong>Ava</strong> achieved 8-day streak!</span>
-                    <span className="time">10 min ago</span>
-                  </div>
+                  {activityFeed.length > 0 ? (
+                    activityFeed.map((activity, index) => (
+                      <div key={index} className={`activity-item ${activity.type}`}>
+                        <span className="material-symbols-outlined">{activity.icon}</span>
+                        <span><strong>{activity.student}</strong> {activity.message}</span>
+                        <span className="time">{activity.time}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="activity-item">
+                      <span className="material-symbols-outlined">info</span>
+                      <span>No recent activity. Start a tutoring session to see activity here!</span>
+                      <span className="time">-</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -316,13 +413,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
               <div className="insights-section">
                 <h3>AI Insights</h3>
                 <div className="insight-cards">
+                  {stats.strugglingCount > 0 ? (
+                    <div className="insight-card">
+                      <span className="material-symbols-outlined">lightbulb</span>
+                      <p><strong>Recommendation:</strong> {stats.strugglingCount} student(s) need attention. Consider one-on-one review sessions for struggling topics.</p>
+                    </div>
+                  ) : (
+                    <div className="insight-card success">
+                      <span className="material-symbols-outlined">celebration</span>
+                      <p><strong>Great Progress:</strong> All students are performing well! Class average accuracy is {stats.averageAccuracy}%.</p>
+                    </div>
+                  )}
+                  {progress && progress.currentStreak >= 3 && (
+                    <div className="insight-card success">
+                      <span className="material-symbols-outlined">trending_up</span>
+                      <p><strong>Engagement:</strong> Your demo student has a {progress.currentStreak}-day learning streak. Consistent engagement correlates with better outcomes.</p>
+                    </div>
+                  )}
                   <div className="insight-card">
-                    <span className="material-symbols-outlined">lightbulb</span>
-                    <p><strong>Recommendation:</strong> Consider reviewing Chemical Bonding concepts. 3 students are struggling with this topic.</p>
-                  </div>
-                  <div className="insight-card success">
-                    <span className="material-symbols-outlined">trending_up</span>
-                    <p><strong>Success:</strong> Sonnets module has 94% average completion. Consider advancing to more complex poetry.</p>
+                    <span className="material-symbols-outlined">school</span>
+                    <p><strong>Tip:</strong> Students using multiple tutors show 23% better retention. Encourage trying different teaching styles.</p>
                   </div>
                 </div>
               </div>

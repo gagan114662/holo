@@ -23,12 +23,13 @@ import MediaMixerDisplay from "./components/media-mixer-display/MediaMixerDispla
 import ScratchpadCapture from "./components/scratchpad-capture/ScratchpadCapture";
 import QuestionDisplay from "./components/question-display/QuestionDisplay";
 import ControlTray from "./components/control-tray/ControlTray";
-import { TalkingAvatar, AvatarSelector, AvatarSpeechHandler } from "./components/avatar";
+import { VideoAvatar, AvatarSelector, AvatarSpeechHandler } from "./components/avatar";
 import { AnswerInput } from "./components/answer-input";
 import { ProgressDashboard } from "./components/progress-dashboard";
 import { LanguageSelector, Language } from "./components/language-selector";
 import { AvatarCreator, CustomAvatar } from "./components/avatar-creator";
 import { TeacherDashboard } from "./components/teacher-dashboard";
+import { storageService } from "./services/StorageService";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
 import Scratchpad from "./components/scratchpad/Scratchpad";
@@ -62,8 +63,23 @@ function TutoringInterface({
   const [isProgressOpen, setProgressOpen] = useState(false);
   const [isTeacherDashboardOpen, setTeacherDashboardOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [currentSubject, setCurrentSubject] = useState('general');
 
   const { currentAvatar } = useAvatarContext();
+
+  // Start session when entering tutoring view
+  useEffect(() => {
+    if (currentAvatar) {
+      const subject = currentAvatar.subject || 'general';
+      setCurrentSubject(subject);
+      storageService.startSession(currentAvatar.id, currentAvatar.name, subject);
+    }
+
+    // End session when leaving
+    return () => {
+      storageService.endSession();
+    };
+  }, [currentAvatar]);
 
   useEffect(() => {
     if (mixerVideoRef.current && mixerStream) {
@@ -131,7 +147,7 @@ function TutoringInterface({
         <div className="main-app-area">
           {/* Avatar Display */}
           <div className={cn("avatar-panel", { minimized: isAvatarMinimized })}>
-            <TalkingAvatar
+            <VideoAvatar
               size={isAvatarMinimized ? "small" : "large"}
               showName={!isAvatarMinimized}
             />
@@ -144,8 +160,11 @@ function TutoringInterface({
               {/* Answer Input - KEY FEATURE */}
               <AnswerInput
                 questionType="free_text"
+                subject={currentSubject}
+                skill={currentSubject}
                 onSubmit={(answer, isCorrect) => {
                   console.log('Answer:', answer, 'Correct:', isCorrect);
+                  // Refresh progress data after each answer
                 }}
               />
               {isScratchpadOpen && (

@@ -1,11 +1,12 @@
 /**
  * ProgressDashboard Component
  * Shows student learning progress with visual analytics
- * Superior to 2wai: includes skill trees, streaks, and achievements
+ * Uses real data from StorageService
  */
 
 import React, { useState, useEffect } from 'react';
 import { useAvatarContext } from '../../contexts/AvatarContext';
+import { storageService, UserProgress, SkillProgress as StoredSkill, Achievement as StoredAchievement } from '../../services/StorageService';
 import './ProgressDashboard.scss';
 
 interface SkillProgress {
@@ -33,11 +34,10 @@ interface Achievement {
   description: string;
   icon: string;
   unlocked: boolean;
+  unlockedAt?: string;
   progress?: number;
   maxProgress?: number;
 }
-
-const DASH_API_URL = process.env.REACT_APP_DASH_API_URL || 'http://localhost:8000';
 
 const ProgressDashboard: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
@@ -50,75 +50,127 @@ const ProgressDashboard: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'achievements'>('overview');
 
-  // Sample achievements (would come from API in production)
-  const sampleAchievements: Achievement[] = [
-    { id: 'first_lesson', name: 'First Steps', description: 'Complete your first lesson', icon: 'school', unlocked: true },
-    { id: 'streak_7', name: 'Week Warrior', description: 'Maintain a 7-day streak', icon: 'local_fire_department', unlocked: false, progress: 3, maxProgress: 7 },
-    { id: 'perfect_10', name: 'Perfect 10', description: 'Answer 10 questions correctly in a row', icon: 'stars', unlocked: false, progress: 6, maxProgress: 10 },
-    { id: 'explorer', name: 'Explorer', description: 'Learn from 5 different tutors', icon: 'explore', unlocked: false, progress: 1, maxProgress: 5 },
-    { id: 'night_owl', name: 'Night Owl', description: 'Study after 10 PM', icon: 'nightlight', unlocked: true },
-    { id: 'speed_demon', name: 'Speed Demon', description: 'Answer correctly in under 5 seconds', icon: 'bolt', unlocked: false },
-  ];
-
+  // Load progress data from storage
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchProgress = async () => {
+    const loadProgress = () => {
       setLoading(true);
       try {
-        // Fetch user stats
-        const statsResponse = await fetch(`${DASH_API_URL}/user/1/stats`);
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json();
-          setStats(statsData);
-        } else {
-          // Use sample data if API not available
-          setStats({
-            total_questions: 47,
-            correct_answers: 38,
-            current_streak: 3,
-            longest_streak: 12,
-            time_spent_minutes: 156,
-            skills_mastered: 5,
-            skills_in_progress: 8,
-          });
-        }
+        // Get real user progress from localStorage
+        const progress = storageService.getUserProgress();
 
-        // Fetch skills progress
-        const skillsResponse = await fetch(`${DASH_API_URL}/user/1/skills`);
-        if (skillsResponse.ok) {
-          const skillsData = await skillsResponse.json();
-          setSkills(skillsData.skills || []);
-        } else {
-          // Sample skills data
-          setSkills([
-            { skill_id: '1', name: 'Basic Addition', proficiency: 0.95, practice_count: 25, last_practiced: '2024-01-15', streak: 5 },
-            { skill_id: '2', name: 'Multiplication', proficiency: 0.78, practice_count: 18, last_practiced: '2024-01-14', streak: 3 },
-            { skill_id: '3', name: 'Fractions', proficiency: 0.45, practice_count: 8, last_practiced: '2024-01-13', streak: 1 },
-            { skill_id: '4', name: 'Algebra Basics', proficiency: 0.32, practice_count: 5, last_practiced: '2024-01-12', streak: 0 },
-            { skill_id: '5', name: 'Geometry', proficiency: 0.15, practice_count: 2, last_practiced: '2024-01-10', streak: 0 },
-          ]);
-        }
+        // Calculate stats from real data
+        const skillValues = Object.values(progress.skills);
+        const skillsMastered = skillValues.filter(s => s.level >= 5).length;
+        const skillsInProgress = skillValues.filter(s => s.level < 5 && s.level > 0).length;
 
-        setAchievements(sampleAchievements);
-      } catch (error) {
-        console.error('Failed to fetch progress:', error);
-        // Use sample data on error
+        // Estimate time spent (3 min average per session)
+        const timeSpent = progress.totalSessions * 3;
+
         setStats({
-          total_questions: 47,
-          correct_answers: 38,
-          current_streak: 3,
-          longest_streak: 12,
-          time_spent_minutes: 156,
-          skills_mastered: 5,
-          skills_in_progress: 8,
+          total_questions: progress.totalQuestionsAnswered,
+          correct_answers: progress.totalCorrectAnswers,
+          current_streak: progress.currentStreak,
+          longest_streak: progress.longestStreak,
+          time_spent_minutes: timeSpent,
+          skills_mastered: skillsMastered,
+          skills_in_progress: skillsInProgress,
         });
+
+        // Convert stored skills to display format
+        const displaySkills: SkillProgress[] = skillValues.map((skill, index) => ({
+          skill_id: String(index + 1),
+          name: skill.name,
+          proficiency: skill.questionsAttempted > 0
+            ? skill.questionsCorrect / skill.questionsAttempted
+            : 0,
+          practice_count: skill.questionsAttempted,
+          last_practiced: skill.lastPracticed,
+          streak: Math.floor(skill.xp / 50), // Rough streak estimate
+        }));
+        setSkills(displaySkills);
+
+        // Get achievements - combine unlocked with available
+        const allAchievementDefs = storageService.getAchievementDefinitions();
+        const unlockedIds = new Set(progress.achievements.map(a => a.id));
+
+        const displayAchievements: Achievement[] = allAchievementDefs.map(def => {
+          const unlocked = unlockedIds.has(def.id);
+          const storedAchievement = progress.achievements.find(a => a.id === def.id);
+
+          // Calculate progress for locked achievements
+          let progressValue: number | undefined;
+          let maxProgress: number | undefined;
+
+          if (!unlocked) {
+            switch (def.id) {
+              case 'five_correct':
+                progressValue = Math.min(progress.totalCorrectAnswers, 5);
+                maxProgress = 5;
+                break;
+              case 'ten_sessions':
+                progressValue = Math.min(progress.totalSessions, 10);
+                maxProgress = 10;
+                break;
+              case 'streak_3':
+                progressValue = Math.min(progress.currentStreak, 3);
+                maxProgress = 3;
+                break;
+              case 'streak_7':
+                progressValue = Math.min(progress.currentStreak, 7);
+                maxProgress = 7;
+                break;
+              case 'streak_30':
+                progressValue = Math.min(progress.currentStreak, 30);
+                maxProgress = 30;
+                break;
+              case 'multi_subject':
+                const subjects = new Set(progress.sessionHistory.map(s => s.subject));
+                progressValue = subjects.size;
+                maxProgress = 3;
+                break;
+              case 'all_avatars':
+                const avatars = new Set(progress.sessionHistory.map(s => s.avatarId));
+                progressValue = avatars.size;
+                maxProgress = 8;
+                break;
+            }
+          }
+
+          return {
+            id: def.id,
+            name: def.name,
+            description: def.description,
+            icon: def.icon,
+            unlocked,
+            unlockedAt: storedAchievement?.unlockedAt,
+            progress: progressValue,
+            maxProgress,
+          };
+        });
+
+        setAchievements(displayAchievements);
+      } catch (error) {
+        console.error('Failed to load progress:', error);
+        // Set empty defaults on error
+        setStats({
+          total_questions: 0,
+          correct_answers: 0,
+          current_streak: 0,
+          longest_streak: 0,
+          time_spent_minutes: 0,
+          skills_mastered: 0,
+          skills_in_progress: 0,
+        });
+        setSkills([]);
+        setAchievements([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProgress();
+    loadProgress();
   }, [isOpen]);
 
   if (!isOpen) return null;
