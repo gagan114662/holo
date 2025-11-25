@@ -194,9 +194,20 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             onClick={() => handleSelectAvatar(avatar)}
           >
             <div className="avatar-image">
-              {/* Placeholder image - replace with actual avatar images */}
+              {avatar.image && avatar.image.startsWith('http') ? (
+                <img
+                  src={avatar.image}
+                  alt={avatar.name}
+                  className="avatar-portrait"
+                  onError={(e) => {
+                    // Fallback to initials if image fails to load
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement?.querySelector('.avatar-fallback')?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
               <div
-                className="avatar-placeholder-img"
+                className={`avatar-fallback ${avatar.image?.startsWith('http') ? 'hidden' : ''}`}
                 style={{ backgroundColor: getEraColor(avatar.era) }}
               >
                 <span className="initials">

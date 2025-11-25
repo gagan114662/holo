@@ -59,7 +59,7 @@ HISTORICAL_FIGURES = {
         Occasionally reference your work on relativity and the photoelectric effect.""",
         "greeting": "Ah, wonderful! A curious mind seeking knowledge. Tell me, what puzzles you today?",
         "subjects": ["physics", "mathematics", "philosophy of science"],
-        "image": "/avatars/einstein.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Albert_Einstein_Head.jpg/220px-Albert_Einstein_Head.jpg"
     },
     "curie": {
         "id": "curie",
@@ -76,7 +76,7 @@ HISTORICAL_FIGURES = {
         Be inspiring, especially to young scientists.""",
         "greeting": "Bonjour! Science is about dedication and discovery. What shall we explore together?",
         "subjects": ["chemistry", "physics", "radioactivity"],
-        "image": "/avatars/curie.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Marie_Curie_c1920.jpg/220px-Marie_Curie_c1920.jpg"
     },
     "shakespeare": {
         "id": "shakespeare",
@@ -93,7 +93,7 @@ HISTORICAL_FIGURES = {
         Help students understand literature through storytelling.""",
         "greeting": "All the world's a stage, dear student! What tale shall we unravel today?",
         "subjects": ["literature", "writing", "drama", "poetry"],
-        "image": "/avatars/shakespeare.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/220px-Shakespeare.jpg"
     },
     "hypatia": {
         "id": "hypatia",
@@ -110,7 +110,7 @@ HISTORICAL_FIGURES = {
         Be patient and methodical in explanations.""",
         "greeting": "Welcome, seeker of wisdom. Mathematics reveals the harmony of the cosmos. What mysteries draw your mind?",
         "subjects": ["mathematics", "astronomy", "philosophy"],
-        "image": "/avatars/hypatia.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Hypatia_portrait.png/220px-Hypatia_portrait.png"
     },
     "darwin": {
         "id": "darwin",
@@ -127,7 +127,7 @@ HISTORICAL_FIGURES = {
         Be thoughtful and evidence-based.""",
         "greeting": "Greetings, young naturalist! Nature has endless wonders to reveal to the patient observer. What aspect of life shall we study?",
         "subjects": ["biology", "evolution", "natural history"],
-        "image": "/avatars/darwin.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Charles_Darwin_seated_crop.jpg/220px-Charles_Darwin_seated_crop.jpg"
     },
     "ada": {
         "id": "ada",
@@ -144,7 +144,7 @@ HISTORICAL_FIGURES = {
         Be visionary about technology's future.""",
         "greeting": "Delightful to meet you! The Analytical Engine weaves algebraic patterns as the Jacquard loom weaves flowers. Shall we explore the poetry of computation?",
         "subjects": ["computer_science", "mathematics", "programming"],
-        "image": "/avatars/ada.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Ada_Lovelace_portrait.jpg/220px-Ada_Lovelace_portrait.jpg"
     },
     "socrates": {
         "id": "socrates",
@@ -161,7 +161,7 @@ HISTORICAL_FIGURES = {
         Be humble about your own knowledge - 'I know that I know nothing.'""",
         "greeting": "Ah, a fellow seeker of wisdom! Tell me, what do you believe you know, and how do you know it?",
         "subjects": ["philosophy", "ethics", "critical_thinking", "logic"],
-        "image": "/avatars/socrates.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Socrate_du_Louvre.jpg/220px-Socrate_du_Louvre.jpg"
     },
     "frida": {
         "id": "frida",
@@ -178,7 +178,7 @@ HISTORICAL_FIGURES = {
         Be bold, honest, and inspiring about creative expression.""",
         "greeting": "Hola! Art is the only way to run away without leaving home. What colors does your soul wish to paint today?",
         "subjects": ["art", "art_history", "self_expression"],
-        "image": "/avatars/frida.png"
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/220px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg"
     }
 }
 

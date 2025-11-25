@@ -27,6 +27,8 @@ import { TalkingAvatar, AvatarSelector, AvatarSpeechHandler } from "./components
 import { AnswerInput } from "./components/answer-input";
 import { ProgressDashboard } from "./components/progress-dashboard";
 import { LanguageSelector, Language } from "./components/language-selector";
+import { AvatarCreator, CustomAvatar } from "./components/avatar-creator";
+import { TeacherDashboard } from "./components/teacher-dashboard";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
 import Scratchpad from "./components/scratchpad/Scratchpad";
@@ -58,6 +60,7 @@ function TutoringInterface({
   const [isScratchpadOpen, setScratchpadOpen] = useState(false);
   const [isAvatarMinimized, setAvatarMinimized] = useState(false);
   const [isProgressOpen, setProgressOpen] = useState(false);
+  const [isTeacherDashboardOpen, setTeacherDashboardOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
 
   const { currentAvatar } = useAvatarContext();
@@ -106,6 +109,13 @@ function TutoringInterface({
               title="View Progress"
             >
               <span className="material-symbols-outlined">insights</span>
+            </button>
+            <button
+              className="icon-button teacher-btn"
+              onClick={() => setTeacherDashboardOpen(true)}
+              title="Teacher Dashboard"
+            >
+              <span className="material-symbols-outlined">school</span>
             </button>
             <button
               className={cn("icon-button", { active: isAvatarMinimized })}
@@ -168,6 +178,12 @@ function TutoringInterface({
 
         {/* Progress Dashboard Modal */}
         <ProgressDashboard isOpen={isProgressOpen} onClose={() => setProgressOpen(false)} />
+
+        {/* Teacher Dashboard Modal */}
+        <TeacherDashboard
+          isOpen={isTeacherDashboardOpen}
+          onClose={() => setTeacherDashboardOpen(false)}
+        />
       </main>
     </div>
   );
@@ -176,6 +192,13 @@ function TutoringInterface({
 function App() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('selector');
+  const [showAvatarCreator, setShowAvatarCreator] = useState(false);
+  const [customAvatars, setCustomAvatars] = useState<CustomAvatar[]>([]);
+
+  const handleAvatarCreated = (avatar: CustomAvatar) => {
+    setCustomAvatars(prev => [...prev, avatar]);
+    setShowAvatarCreator(false);
+  };
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8765');
@@ -201,8 +224,22 @@ function App() {
                   <span className="badge"><span className="material-symbols-outlined">psychology</span>Adaptive Learning</span>
                   <span className="badge"><span className="material-symbols-outlined">mic</span>Voice Interaction</span>
                 </div>
+                <button
+                  className="create-avatar-btn"
+                  onClick={() => setShowAvatarCreator(true)}
+                >
+                  <span className="material-symbols-outlined">add_photo_alternate</span>
+                  Create Your Own Tutor
+                </button>
               </div>
               <AvatarSelector onSelect={() => setCurrentView('tutoring')} />
+
+              {/* Avatar Creator Modal */}
+              <AvatarCreator
+                isOpen={showAvatarCreator}
+                onClose={() => setShowAvatarCreator(false)}
+                onAvatarCreated={handleAvatarCreated}
+              />
             </div>
           ) : (
             <TutoringInterface socket={socket} onBack={() => setCurrentView('selector')} />

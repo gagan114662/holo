@@ -408,3 +408,301 @@ body {
     width: 100%;
   }
 }
+
+/* Create Avatar Button */
+.create-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.25rem;
+  }
+}
+
+/* Teacher Button Style */
+.teacher-btn {
+  background: rgba(237, 137, 54, 0.2) !important;
+  border-color: rgba(237, 137, 54, 0.3) !important;
+
+  &:hover {
+    background: rgba(237, 137, 54, 0.35) !important;
+  }
+}
+
+/* ============================================= */
+/* Mobile Responsive Styles - PWA Support       */
+/* ============================================= */
+
+/* Mobile First Breakpoints */
+@media (max-width: 1024px) {
+  .streaming-console {
+    .main-app-area {
+      flex-direction: column;
+      padding-top: 70px;
+    }
+
+    .avatar-panel {
+      min-width: auto;
+      padding: 1rem;
+    }
+  }
+
+  .top-bar {
+    padding: 0.75rem 1rem;
+
+    .current-tutor {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .selection-header {
+    padding: 2rem 1rem 1rem;
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    p {
+      font-size: 1rem;
+    }
+
+    .feature-badges {
+      gap: 0.5rem;
+
+      .badge {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  .streaming-console {
+    .main-app-area {
+      gap: 0.5rem;
+    }
+
+    main {
+      gap: 0.5rem;
+    }
+
+    .avatar-panel {
+      position: fixed;
+      bottom: 80px;
+      right: 10px;
+      min-width: auto;
+      padding: 0;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .top-bar {
+    .back-button {
+      padding: 0.5rem;
+
+      span:not(.material-symbols-outlined) {
+        display: none;
+      }
+    }
+
+    .icon-button {
+      padding: 0.5rem;
+    }
+  }
+
+  .question-panel {
+    padding: 0 0.5rem;
+
+    .answer-input {
+      padding: 0 0.5rem;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .selection-header {
+    h1 {
+      font-size: 1.75rem;
+    }
+
+    .feature-badges {
+      .badge {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.7rem;
+      }
+    }
+  }
+
+  .create-avatar-btn {
+    font-size: 0.9rem;
+    padding: 0.6rem 1.25rem;
+  }
+
+  .top-bar {
+    .top-bar-right {
+      gap: 0.5rem;
+    }
+  }
+
+  .streaming-console main {
+    padding-bottom: 100px; /* Space for control tray */
+  }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  .icon-button,
+  .back-button,
+  .create-avatar-btn,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .top-bar .icon-button {
+    padding: 0.6rem;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+  .top-bar {
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
+
+  .streaming-console main {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .streaming-console {
+    .main-app-area {
+      flex-direction: row;
+      padding-top: 50px;
+    }
+
+    .avatar-panel {
+      max-width: 200px;
+    }
+  }
+
+  .selection-header {
+    padding: 1rem;
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    p {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+  }
+}
+
+/* PWA Install Prompt */
+.pwa-install-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  max-width: 90vw;
+
+  .install-text {
+    flex: 1;
+
+    strong {
+      display: block;
+      color: #2d3748;
+    }
+
+    span {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+  }
+
+  .install-btn {
+    padding: 0.6rem 1.25rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .dismiss-btn {
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+  }
+}
+
+/* Offline indicator */
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem;
+  background: #ed8936;
+  color: white;
+  text-align: center;
+  font-size: 0.85rem;
+  z-index: 10000;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .avatar-selection-screen {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+
+  .selection-header {
+    p {
+      color: #a0aec0;
+    }
+
+    .feature-badges .badge {
+      background: #2d3748;
+      color: #e2e8f0;
+    }
+  }
+}
