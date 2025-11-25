@@ -100,11 +100,12 @@ class AvatarService:
             if response.status_code == 200:
                 data = response.json()
                 session_id = data.get("session_id")
-                self.active_sessions[session_id] = {
-                    "provider": "heygen",
-                    "avatar_id": avatar_id,
-                    "heygen_session": data
-                }
+                async with self._sessions_lock:
+                    self.active_sessions[session_id] = {
+                        "provider": "heygen",
+                        "avatar_id": avatar_id,
+                        "heygen_session": data
+                    }
                 return session_id
         except httpx.TimeoutException:
             logger.error("HeyGen session creation timed out")
@@ -138,11 +139,12 @@ class AvatarService:
             if response.status_code in [200, 201]:
                 data = response.json()
                 session_id = data.get("id")
-                self.active_sessions[session_id] = {
-                    "provider": "did",
-                    "avatar_id": avatar_id,
-                    "did_session": data
-                }
+                async with self._sessions_lock:
+                    self.active_sessions[session_id] = {
+                        "provider": "did",
+                        "avatar_id": avatar_id,
+                        "did_session": data
+                    }
                 logger.info(f"D-ID session created: {session_id}")
                 return session_id
             else:
@@ -163,8 +165,9 @@ class AvatarService:
         emotion: str = "neutral"
     ) -> dict:
         """Make the avatar speak text"""
-        session = self.active_sessions.get(session_id)
-        
+        async with self._sessions_lock:
+            session = self.active_sessions.get(session_id)
+
         if not session:
             # Local session - return data for browser TTS
             return {
@@ -322,27 +325,30 @@ class AvatarService:
             if session_id in self.websockets:
                 del self.websockets[session_id]
 
-    def register_websocket(self, session_id: str, websocket: WebSocket):
-        """Register a WebSocket for a session (sync for compatibility, use lock in caller)"""
-        # Note: Caller should use async with self._websockets_lock if needed
-        existing_ws = self.websockets.get(session_id)
-        if existing_ws:
-            logger.warning(f"Replacing existing WebSocket for session {session_id}")
-        self.websockets[session_id] = websocket
+    async def register_websocket(self, session_id: str, websocket: WebSocket):
+        """Register a WebSocket for a session (thread-safe)"""
+        async with self._websockets_lock:
+            existing_ws = self.websockets.get(session_id)
+            if existing_ws:
+                logger.warning(f"Replacing existing WebSocket for session {session_id}")
+            self.websockets[session_id] = websocket
         logger.info(f"WebSocket registered for session {session_id}")
 
-    def unregister_websocket(self, session_id: str):
-        """Unregister a WebSocket (sync for compatibility)"""
-        if session_id in self.websockets:
-            del self.websockets[session_id]
-            logger.info(f"WebSocket unregistered for session {session_id}")
+    async def unregister_websocket(self, session_id: str):
+        """Unregister a WebSocket (thread-safe)"""
+        async with self._websockets_lock:
+            if session_id in self.websockets:
+                del self.websockets[session_id]
+                logger.info(f"WebSocket unregistered for session {session_id}")
 
     async def send_to_websocket(self, session_id: str, message: dict) -> bool:
         """
         Send a message to a session's WebSocket with error handling.
         Returns True if message was sent successfully, False otherwise.
         """
-        ws = self.websockets.get(session_id)
+        async with self._websockets_lock:
+            ws = self.websockets.get(session_id)
+
         if not ws:
             logger.warning(f"No WebSocket found for session {session_id}")
             return False
@@ -353,10 +359,10 @@ class AvatarService:
         except RuntimeError as e:
             # WebSocket is closed or in invalid state
             logger.warning(f"WebSocket send failed for session {session_id}: {e}")
-            self.unregister_websocket(session_id)
+            await self.unregister_websocket(session_id)
             return False
         except Exception as e:
             # Catch any other WebSocket errors
             logger.error(f"Unexpected WebSocket error for session {session_id}: {e}")
-            self.unregister_websocket(session_id)
+            await self.unregister_websocket(session_id)
             return False

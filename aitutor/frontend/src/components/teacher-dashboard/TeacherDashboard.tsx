@@ -503,21 +503,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                   <h4>Topic Difficulty Analysis</h4>
                   <div className="chart-visual">
                     <div className="difficulty-list">
-                      {progress?.subjectProgress && Object.entries(progress.subjectProgress).length > 0 ? (
-                        Object.entries(progress.subjectProgress).map(([subject, data]) => (
-                          <div key={subject} className="difficulty-item">
-                            <span className="subject-name">{subject}</span>
+                      {progress?.skills && Object.entries(progress.skills).length > 0 ? (
+                        Object.entries(progress.skills).map(([skillName, data]) => (
+                          <div key={skillName} className="difficulty-item">
+                            <span className="subject-name">{data.name || skillName}</span>
                             <div className="difficulty-bar-bg">
                               <div
                                 className="difficulty-bar"
                                 style={{
-                                  width: `${Math.round(((data as any).correct / Math.max((data as any).attempted, 1)) * 100)}%`,
-                                  backgroundColor: ((data as any).correct / Math.max((data as any).attempted, 1)) > 0.7 ? '#48bb78' : '#ed8936'
+                                  width: `${Math.round((data.questionsCorrect / Math.max(data.questionsAttempted, 1)) * 100)}%`,
+                                  backgroundColor: (data.questionsCorrect / Math.max(data.questionsAttempted, 1)) > 0.7 ? '#48bb78' : '#ed8936'
                                 }}
                               />
                             </div>
                             <span className="difficulty-pct">
-                              {Math.round(((data as any).correct / Math.max((data as any).attempted, 1)) * 100)}%
+                              {Math.round((data.questionsCorrect / Math.max(data.questionsAttempted, 1)) * 100)}%
                             </span>
                           </div>
                         ))

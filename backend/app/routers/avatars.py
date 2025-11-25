@@ -2,7 +2,7 @@
 Avatars Router
 Handles avatar management and HeyGen/D-ID integration
 """
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from pydantic import BaseModel
@@ -228,7 +228,7 @@ async def end_avatar_session(
 async def avatar_websocket(
     websocket: WebSocket,
     session_id: str,
-    token: str = None,
+    token: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db)
 ):
     """WebSocket for real-time avatar lip-sync and viseme data (requires authentication)"""
@@ -248,7 +248,7 @@ async def avatar_websocket(
 
     try:
         # Register this connection
-        avatar_service.register_websocket(session_id, websocket)
+        await avatar_service.register_websocket(session_id, websocket)
 
         while True:
             data = await websocket.receive_json()
@@ -298,7 +298,7 @@ async def avatar_websocket(
 
     except WebSocketDisconnect:
         logger.info(f"Avatar WebSocket disconnected: session={session_id}")
-        avatar_service.unregister_websocket(session_id)
+        await avatar_service.unregister_websocket(session_id)
     except Exception as e:
         logger.error(f"Avatar WebSocket error: {e}")
-        avatar_service.unregister_websocket(session_id)
+        await avatar_service.unregister_websocket(session_id)
