@@ -12,7 +12,8 @@ from datetime import datetime
 from ..database import get_db
 from ..models.user import User
 from ..models.session import TutoringSession, SessionMessage
-from ..models.question import Subject
+from ..models.question import Subject, Skill
+from ..models.progress import SkillProgress
 from ..schemas.session import SessionCreate, SessionResponse, MessageCreate, MessageResponse, SessionStats
 from .auth import get_current_user
 
@@ -239,6 +240,38 @@ async def get_session_stats(
     favorite_row = favorite_subject_result.first()
     favorite_subject = favorite_row[0] if favorite_row else None
 
+    # Get strongest skill (highest mastery with minimum attempts)
+    strongest_skill_result = await db.execute(
+        select(Skill.display_name, SkillProgress.mastery_level)
+        .join(SkillProgress, SkillProgress.skill_id == Skill.id)
+        .where(
+            and_(
+                SkillProgress.user_id == user.id,
+                SkillProgress.questions_attempted >= 5  # Minimum attempts for validity
+            )
+        )
+        .order_by(SkillProgress.mastery_level.desc())
+        .limit(1)
+    )
+    strongest_row = strongest_skill_result.first()
+    strongest_skill = strongest_row[0] if strongest_row else None
+
+    # Get weakest skill (lowest mastery with minimum attempts)
+    weakest_skill_result = await db.execute(
+        select(Skill.display_name, SkillProgress.mastery_level)
+        .join(SkillProgress, SkillProgress.skill_id == Skill.id)
+        .where(
+            and_(
+                SkillProgress.user_id == user.id,
+                SkillProgress.questions_attempted >= 5  # Minimum attempts for validity
+            )
+        )
+        .order_by(SkillProgress.mastery_level.asc())
+        .limit(1)
+    )
+    weakest_row = weakest_skill_result.first()
+    weakest_skill = weakest_row[0] if weakest_row else None
+
     return SessionStats(
         total_sessions=total_sessions,
         total_questions=questions,
@@ -247,8 +280,8 @@ async def get_session_stats(
         total_time_minutes=total_time_minutes,
         average_session_length=average_session_length,
         favorite_subject=favorite_subject,
-        strongest_skill=None,  # Would require complex skill analysis
-        weakest_skill=None     # Would require complex skill analysis
+        strongest_skill=strongest_skill,
+        weakest_skill=weakest_skill
     )
 
 
