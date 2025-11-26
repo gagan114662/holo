@@ -22,6 +22,14 @@ AVATAR_IMAGE_URLS = {
     "aristotle": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Aristotle_Altemps_Inv8575.jpg/440px-Aristotle_Altemps_Inv8575.jpg",
     "hypatia": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Hypatia_portrait.png/440px-Hypatia_portrait.png",
     "turing": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Alan_Turing_Aged_16.jpg/440px-Alan_Turing_Aged_16.jpg",
+    "shakespeare": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/440px-Shakespeare.jpg",
+    "socrates": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Socrate_du_Louvre.jpg/440px-Socrate_du_Louvre.jpg",
+    "ada": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Ada_Lovelace_portrait.jpg/440px-Ada_Lovelace_portrait.jpg",
+    "frida": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/440px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg",
+    # New 2wai vision avatars
+    "victoria": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Queen_Victoria_by_Bassano.jpg/440px-Queen_Victoria_by_Bassano.jpg",
+    "nightingale": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg/440px-Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg",
+    "henry": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg/440px-Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg",
 }
 
 # HTTP client timeout configuration
@@ -85,6 +93,10 @@ class AvatarService:
                 "aristotle": "wayne_20240306",      # Philosophy tutor
                 "turing": "josh_lite3_20230714",    # Computer Science tutor
                 "davinci": "wayne_20240306",        # Art/Science tutor
+                # New 2wai vision avatars
+                "victoria": "angela_lite3_20230714",   # Queen Victoria - History
+                "nightingale": "lily_lite3_20230714",  # Florence Nightingale - Healthcare/Science
+                "henry": "josh_lite3_20230714",        # Henry VIII - History
             }
             
             heygen_id = heygen_avatar_map.get(avatar_id, "josh_lite3_20230714")

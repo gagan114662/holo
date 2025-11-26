@@ -6,32 +6,72 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useAvatarContext } from '../../contexts/AvatarContext';
+import { heygenService, HeyGenSession } from '../../services/HeyGenService';
+import { storageService } from '../../services/StorageService';
 import './HeyGenAvatar.scss';
 
 interface HeyGenAvatarProps {
   className?: string;
   size?: 'small' | 'medium' | 'large';
   showName?: boolean;
+  quality?: 'low' | 'medium' | 'high';
+  onReady?: () => void;
+  onError?: (error: string) => void;
+  onSpeakingChange?: (speaking: boolean) => void;
 }
 
-interface HeyGenSession {
-  sessionId: string;
-  token: string;
-  sdp: RTCSessionDescriptionInit;
-}
+type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-const AVATAR_SERVICE_URL = process.env.REACT_APP_AVATAR_SERVICE_URL || 'http://localhost:8001';
+// Map historical figures to HeyGen avatar IDs
+// These would be actual HeyGen avatar IDs from your HeyGen account
+const HEYGEN_AVATAR_MAP: Record<string, string> = {
+  einstein: 'josh_lite3_20230714',      // Mature male avatar
+  curie: 'anna_lite3_20230714',         // Female avatar
+  shakespeare: 'wayne_lite3_20230714',   // Classic male avatar
+  hypatia: 'angela_lite3_20230714',     // Female avatar
+  darwin: 'tyler_lite3_20230714',       // Male avatar
+  ada: 'lily_lite3_20230714',           // Female avatar
+  socrates: 'josh_lite3_20230714',      // Mature male avatar
+  frida: 'anna_lite3_20230714',         // Female avatar
+  // New avatars from 2wai vision
+  victoria: 'angela_lite3_20230714',    // Queen Victoria
+  newton: 'wayne_lite3_20230714',       // Isaac Newton
+  nightingale: 'lily_lite3_20230714',   // Florence Nightingale
+  henry: 'josh_lite3_20230714',         // Henry VIII
+};
+
+// Voice mapping for historical figures
+const HEYGEN_VOICE_MAP: Record<string, string> = {
+  einstein: 'en-US-GuyNeural',
+  curie: 'en-US-JennyNeural',
+  shakespeare: 'en-GB-RyanNeural',
+  hypatia: 'en-US-AriaNeural',
+  darwin: 'en-GB-RyanNeural',
+  ada: 'en-GB-SoniaNeural',
+  socrates: 'en-US-GuyNeural',
+  frida: 'es-MX-DaliaNeural',
+  victoria: 'en-GB-SoniaNeural',
+  newton: 'en-GB-RyanNeural',
+  nightingale: 'en-GB-SoniaNeural',
+  henry: 'en-GB-RyanNeural',
+};
 
 const HeyGenAvatar: React.FC<HeyGenAvatarProps> = ({
   className = '',
   size = 'large',
   showName = true,
+  quality = 'medium',
+  onReady,
+  onError,
+  onSpeakingChange,
 }) => {
   const { currentAvatar, session, state } = useAvatarContext();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [error, setError] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [heygenSession, setHeygenSession] = useState<HeyGenSession | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Size dimensions
   const dimensions = {
@@ -42,105 +82,182 @@ const HeyGenAvatar: React.FC<HeyGenAvatarProps> = ({
 
   const { width, height } = dimensions[size];
 
-  // Initialize WebRTC connection when session is created
+  // Check for API key on mount
+  useEffect(() => {
+    const apiKeys = storageService.getApiKeys();
+    if (apiKeys.heygen) {
+      heygenService.setApiKey(apiKeys.heygen);
+    }
+  }, []);
+
+  // Set up service callbacks
+  useEffect(() => {
+    heygenService.setStateChangeCallback((state) => {
+      setConnectionState(state);
+      if (state === 'connected') {
+        onReady?.();
+      } else if (state === 'error') {
+        onError?.('Connection error');
+      }
+    });
+
+    heygenService.setSpeakingChangeCallback((speaking) => {
+      setIsSpeaking(speaking);
+      onSpeakingChange?.(speaking);
+    });
+
+    return () => {
+      heygenService.setStateChangeCallback(null);
+      heygenService.setSpeakingChangeCallback(null);
+    };
+  }, [onReady, onError, onSpeakingChange]);
+
+  // Initialize HeyGen connection when avatar is selected
   const initializeConnection = useCallback(async () => {
-    if (!session || session.provider !== 'heygen') return;
+    if (!currentAvatar || !heygenService.hasApiKey()) {
+      setError('HeyGen API key not configured');
+      return;
+    }
 
     try {
       setConnectionState('connecting');
       setError(null);
 
-      // Create peer connection
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-        ],
+      // Get the HeyGen avatar ID for this historical figure
+      const heygenAvatarId = HEYGEN_AVATAR_MAP[currentAvatar.id] || 'josh_lite3_20230714';
+      const voiceId = HEYGEN_VOICE_MAP[currentAvatar.id] || 'en-US-GuyNeural';
+
+      // Create streaming session
+      const newSession = await heygenService.createStreamingSession({
+        quality,
+        avatar_id: heygenAvatarId,
+        voice_id: voiceId,
+        background: {
+          type: 'transparent',
+        },
       });
 
-      peerConnectionRef.current = pc;
+      if (!newSession) {
+        throw new Error('Failed to create HeyGen session');
+      }
 
-      // Handle incoming video stream
-      pc.ontrack = (event) => {
-        if (videoRef.current && event.streams[0]) {
-          videoRef.current.srcObject = event.streams[0];
+      setHeygenSession(newSession);
+
+      // Start the session with video element
+      if (videoRef.current) {
+        const success = await heygenService.startSession(newSession, videoRef.current);
+        if (!success) {
+          throw new Error('Failed to start HeyGen stream');
         }
-      };
+      }
 
-      // Handle connection state changes
-      pc.onconnectionstatechange = () => {
-        switch (pc.connectionState) {
-          case 'connected':
-            setConnectionState('connected');
-            break;
-          case 'disconnected':
-          case 'failed':
-            setConnectionState('disconnected');
-            setError('Connection lost. Attempting to reconnect...');
-            break;
-          case 'closed':
-            setConnectionState('disconnected');
-            break;
-        }
-      };
-
-      // Handle ICE connection state
-      pc.oniceconnectionstatechange = () => {
-        console.log('ICE connection state:', pc.iceConnectionState);
-      };
-
-      // For HeyGen, we would set remote description from their API
-      // This is a placeholder - actual implementation requires HeyGen SDK
-      console.log('HeyGen connection initialized for session:', session.session_id);
-
+      setIsInitialized(true);
       setConnectionState('connected');
+
+      // Speak the avatar's greeting
+      if (currentAvatar.greeting) {
+        setTimeout(() => {
+          heygenService.speak(currentAvatar.greeting);
+        }, 1000);
+      }
     } catch (err) {
       console.error('Failed to initialize HeyGen connection:', err);
-      setError('Failed to connect to avatar service');
-      setConnectionState('disconnected');
+      setError(err instanceof Error ? err.message : 'Failed to connect to avatar service');
+      setConnectionState('error');
+      onError?.(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, [session]);
+  }, [currentAvatar, quality, onError]);
+
+  // Listen for speak events
+  useEffect(() => {
+    const handleSpeak = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ text: string; emotion?: string }>;
+      if (customEvent.detail?.text && heygenService.isConnected()) {
+        await heygenService.speak(customEvent.detail.text);
+      }
+    };
+
+    window.addEventListener('heygen-speak', handleSpeak);
+    window.addEventListener('avatar-speak', handleSpeak);
+
+    return () => {
+      window.removeEventListener('heygen-speak', handleSpeak);
+      window.removeEventListener('avatar-speak', handleSpeak);
+    };
+  }, []);
+
+  // Initialize when avatar changes and provider is heygen
+  useEffect(() => {
+    if (currentAvatar && session?.provider === 'heygen' && !isInitialized) {
+      initializeConnection();
+    }
+  }, [currentAvatar, session, isInitialized, initializeConnection]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
+      heygenService.closeSession();
     };
   }, []);
 
-  // Initialize when session changes
+  // Expose speak function globally
   useEffect(() => {
-    if (session?.provider === 'heygen') {
-      initializeConnection();
-    }
-  }, [session, initializeConnection]);
+    (window as any).heygenSpeak = async (text: string) => {
+      if (heygenService.isConnected()) {
+        return heygenService.speak(text);
+      }
+      return false;
+    };
 
-  if (!currentAvatar || session?.provider !== 'heygen') {
+    (window as any).heygenInterrupt = async () => {
+      return heygenService.interrupt();
+    };
+
+    return () => {
+      delete (window as any).heygenSpeak;
+      delete (window as any).heygenInterrupt;
+    };
+  }, []);
+
+  // Don't render if no avatar or wrong provider
+  if (!currentAvatar || (session?.provider !== 'heygen' && heygenService.hasApiKey() === false)) {
     return null;
   }
 
   return (
     <div className={`heygen-avatar ${className} ${size}`}>
-      <div className="avatar-video-container" style={{ width, height }}>
+      <div
+        className={`avatar-video-container ${connectionState}`}
+        style={{ width, height }}
+      >
         {connectionState === 'connecting' && (
           <div className="loading-overlay">
             <div className="loading-spinner">
               <span className="material-symbols-outlined spinning">sync</span>
             </div>
             <p>Connecting to {currentAvatar.name}...</p>
+            <p style={{ fontSize: '12px', opacity: 0.7, marginTop: '8px' }}>
+              Establishing secure video stream...
+            </p>
           </div>
         )}
 
-        {error && (
+        {(connectionState === 'error' || error) && (
           <div className="error-overlay">
             <span className="material-symbols-outlined">error</span>
-            <p>{error}</p>
-            <button onClick={initializeConnection}>Retry</button>
+            <p>{error || 'Connection error'}</p>
+            <button onClick={() => {
+              setIsInitialized(false);
+              setError(null);
+              initializeConnection();
+            }}>
+              Retry Connection
+            </button>
           </div>
         )}
+
+        {/* Provider badge */}
+        <div className="provider-badge">HeyGen</div>
 
         <video
           ref={videoRef}
@@ -153,8 +270,19 @@ const HeyGenAvatar: React.FC<HeyGenAvatarProps> = ({
           }}
         />
 
+        {/* Audio visualizer when speaking */}
+        {isSpeaking && connectionState === 'connected' && (
+          <div className="audio-visualizer">
+            <div className="bar" />
+            <div className="bar" />
+            <div className="bar" />
+            <div className="bar" />
+            <div className="bar" />
+          </div>
+        )}
+
         {/* Speaking indicator */}
-        {state.isSpeaking && connectionState === 'connected' && (
+        {(isSpeaking || state.isSpeaking) && connectionState === 'connected' && (
           <div className="speaking-badge">
             <span className="material-symbols-outlined">graphic_eq</span>
             Speaking
@@ -164,7 +292,26 @@ const HeyGenAvatar: React.FC<HeyGenAvatarProps> = ({
         {/* Connection status indicator */}
         <div className={`connection-indicator ${connectionState}`}>
           <span className="dot"></span>
-          {connectionState === 'connected' ? 'Live' : connectionState}
+          {connectionState === 'connected' ? 'Live' :
+           connectionState === 'connecting' ? 'Connecting' :
+           connectionState === 'error' ? 'Error' : 'Offline'}
+        </div>
+
+        {/* Quality selector */}
+        <div className="quality-selector">
+          {(['low', 'medium', 'high'] as const).map((q) => (
+            <button
+              key={q}
+              className={quality === q ? 'active' : ''}
+              onClick={() => {
+                // Would need to reconnect with new quality
+                console.log('Quality change to:', q);
+              }}
+              title={`${q} quality`}
+            >
+              {q[0].toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 

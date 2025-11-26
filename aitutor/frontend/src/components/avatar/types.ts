@@ -3,7 +3,7 @@
  * Defines interfaces for the HoloAvatar system
  */
 
-export type AvatarProvider = 'heygen' | 'ready_player_me' | 'local_3d';
+export type AvatarProvider = 'heygen' | 'd-id' | 'ready_player_me' | 'local_3d' | 'local_tts';
 
 export type AvatarEmotion =
   | 'neutral'
@@ -25,7 +25,10 @@ export interface HistoricalFigure {
   voice_id: string;
   avatar_url: string;
   heygen_avatar_id: string;
+  did_avatar_id?: string;
   image: string;
+  teachingStyle?: string;
+  famousQuotes?: string[];
 }
 
 export interface AvatarSession {
@@ -64,9 +67,12 @@ export interface AvatarContextType {
   currentAvatar: HistoricalFigure | null;
   session: AvatarSession | null;
   state: AvatarState;
-  selectAvatar: (avatarId: string) => Promise<void>;
+  preferredProvider: AvatarProvider;
+  availableProviders: AvatarProvider[];
+  selectAvatar: (avatarId: string, provider?: AvatarProvider) => Promise<void>;
   speak: (text: string, emotion?: AvatarEmotion) => Promise<void>;
   setEmotion: (emotion: AvatarEmotion) => void;
+  setPreferredProvider: (provider: AvatarProvider) => void;
   endSession: () => Promise<void>;
 }
 

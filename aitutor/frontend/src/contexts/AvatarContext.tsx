@@ -18,7 +18,9 @@ import {
   AvatarSession,
   HistoricalFigure,
   AvatarEmotion,
+  AvatarProvider,
 } from '../components/avatar/types';
+import { storageService } from '../services/StorageService';
 
 const AVATAR_SERVICE_URL = process.env.REACT_APP_AVATAR_SERVICE_URL || 'http://localhost:8001';
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8001';
@@ -129,6 +131,67 @@ const BUILT_IN_AVATARS: Record<string, HistoricalFigure> = {
     heygen_avatar_id: '',
     image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/440px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg',
   },
+  // New avatars from 2wai vision
+  victoria: {
+    id: 'victoria',
+    name: 'Queen Victoria',
+    subject: 'history',
+    era: '19th Century',
+    subjects: ['history', 'politics', 'empire'],
+    greeting: 'I shall unveil why the Victorian age was a golden era of empire, innovation, and evolution. You may be amused and amazed.',
+    personality: 'Regal, dignified, and authoritative. Speaks with imperial wisdom about the British Empire, the Industrial Revolution, and social reforms.',
+    voice_id: 'en-GB-SoniaNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'angela_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Queen_Victoria_by_Bassano.jpg/440px-Queen_Victoria_by_Bassano.jpg',
+    teachingStyle: 'Formal and commanding, uses historical anecdotes from her 63-year reign',
+    famousQuotes: ['We are not amused.', 'Great events make me quiet and calm; it is only trifles that irritate my nerves.'],
+  },
+  newton: {
+    id: 'newton',
+    name: 'Isaac Newton',
+    subject: 'physics',
+    era: '17th-18th Century',
+    subjects: ['physics', 'mathematics', 'astronomy'],
+    greeting: 'I shall help you understand how an apple changed the world through the magic of gravity. If I have seen further, it is by standing on the shoulders of giants.',
+    personality: 'Brilliant, intense, and methodical. Explains complex physics through elegant mathematics and observation of nature.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'wayne_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Portrait_of_Sir_Isaac_Newton%2C_1689.jpg/440px-Portrait_of_Sir_Isaac_Newton%2C_1689.jpg',
+    teachingStyle: 'Precise and mathematical, builds understanding from first principles',
+    famousQuotes: ['If I have seen further, it is by standing on the shoulders of giants.', 'I can calculate the motion of heavenly bodies, but not the madness of people.'],
+  },
+  nightingale: {
+    id: 'nightingale',
+    name: 'Florence Nightingale',
+    subject: 'science',
+    era: '19th Century',
+    subjects: ['science', 'mathematics', 'healthcare', 'statistics'],
+    greeting: 'Just as I revolutionized healthcare, let me light the path for you. Care, courage, and innovation shall guide our learning journey together.',
+    personality: 'Compassionate, pioneering, and data-driven. Uses statistics and evidence to explain concepts while emphasizing the human impact of knowledge.',
+    voice_id: 'en-GB-SoniaNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'lily_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg/440px-Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg',
+    teachingStyle: 'Evidence-based and caring, uses data visualization and real-world examples',
+    famousQuotes: ['I attribute my success to this: I never gave or took any excuse.', 'How very little can be done under the spirit of fear.'],
+  },
+  henry: {
+    id: 'henry',
+    name: 'Henry VIII',
+    subject: 'history',
+    era: '16th Century',
+    subjects: ['history', 'politics', 'religion'],
+    greeting: 'Reformation, countless battles, and yet this education suite is my finest legacy. Just do not ask me for marriage advice!',
+    personality: 'Bold, charismatic, and commanding. Teaches Tudor history with dramatic flair, covering the English Reformation, politics, and the founding of the Church of England.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'josh_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg/440px-Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg',
+    teachingStyle: 'Dramatic and engaging, uses personal stories and political intrigue',
+    famousQuotes: ['If any persons shall hereafter publish books in English, they shall not contain heresy.', 'The king can do no wrong.'],
+  },
 };
 
 const initialState: AvatarState = {
@@ -145,12 +208,41 @@ interface AvatarProviderProps {
   children: ReactNode;
 }
 
+// Detect available providers based on API keys
+const detectAvailableProviders = (): AvatarProvider[] => {
+  const providers: AvatarProvider[] = ['local_tts']; // Always available
+  const apiKeys = storageService.getApiKeys();
+
+  if (apiKeys.heygen) {
+    providers.unshift('heygen');
+  }
+  if (apiKeys.did) {
+    providers.unshift('d-id');
+  }
+
+  return providers;
+};
+
 export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children }) => {
   const [currentAvatar, setCurrentAvatar] = useState<HistoricalFigure | null>(null);
   const [session, setSession] = useState<AvatarSession | null>(null);
   const [state, setState] = useState<AvatarState>(initialState);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [preferredProvider, setPreferredProvider] = useState<AvatarProvider>('local_tts');
+  const [availableProviders, setAvailableProviders] = useState<AvatarProvider[]>(['local_tts']);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Check for available providers on mount
+  useEffect(() => {
+    const providers = detectAvailableProviders();
+    setAvailableProviders(providers);
+    // Default to best available provider
+    if (providers.includes('heygen')) {
+      setPreferredProvider('heygen');
+    } else if (providers.includes('d-id')) {
+      setPreferredProvider('d-id');
+    }
+  }, []);
 
   // Connect to avatar WebSocket when session is created (only in online mode)
   useEffect(() => {
@@ -226,7 +318,10 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
     }
   };
 
-  const selectAvatar = useCallback(async (avatarId: string) => {
+  const selectAvatar = useCallback(async (avatarId: string, provider?: AvatarProvider) => {
+    // Use specified provider or fall back to preferred provider
+    const selectedProvider = provider || preferredProvider;
+
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -247,14 +342,14 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
       setCurrentAvatar(avatarData);
       setIsOfflineMode(false);
 
-      // Create session
+      // Create session with selected provider
       const sessionResponse = await fetch(`${AVATAR_SERVICE_URL}/sessions/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           avatar_id: avatarId,
           user_id: 'current_user',
-          provider: 'local_3d',
+          provider: selectedProvider,
         }),
       });
 
@@ -267,9 +362,11 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
 
       setState((prev) => ({ ...prev, isLoading: false }));
 
-      // Speak greeting
+      // Speak greeting - use provider-specific event
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('avatar-speak', {
+        const eventName = selectedProvider === 'heygen' ? 'heygen-speak' :
+                         selectedProvider === 'd-id' ? 'did-speak' : 'avatar-speak';
+        window.dispatchEvent(new CustomEvent(eventName, {
           detail: { text: avatarData.greeting, emotion: 'happy' }
         }));
       }, 500);
@@ -282,11 +379,11 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
       if (builtInAvatar) {
         setCurrentAvatar(builtInAvatar);
 
-        // Create local session
+        // Create local session with selected provider
         const localSession: AvatarSession = {
           session_id: `local_${Date.now()}`,
           avatar_id: avatarId,
-          provider: 'local_3d',
+          provider: selectedProvider,
           personality: builtInAvatar.personality,
           greeting: builtInAvatar.greeting,
         };
@@ -294,9 +391,11 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
 
         setState((prev) => ({ ...prev, isLoading: false, error: null }));
 
-        // Speak greeting using local TTS
+        // Speak greeting using provider-specific event
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('avatar-speak', {
+          const eventName = selectedProvider === 'heygen' ? 'heygen-speak' :
+                           selectedProvider === 'd-id' ? 'did-speak' : 'avatar-speak';
+          window.dispatchEvent(new CustomEvent(eventName, {
             detail: { text: builtInAvatar.greeting, emotion: 'happy' }
           }));
         }, 500);
@@ -308,7 +407,7 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         }));
       }
     }
-  }, []);
+  }, [preferredProvider]);
 
   const speak = useCallback(
     async (text: string, emotion: AvatarEmotion = 'neutral') => {
@@ -319,6 +418,9 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
         currentText: text,
         currentEmotion: emotion,
       }));
+
+      // Determine the appropriate event based on current session provider
+      const currentProvider = session?.provider || preferredProvider;
 
       if (!isOfflineMode && wsRef.current?.readyState === WebSocket.OPEN) {
         // Send via WebSocket for real-time lip-sync
@@ -342,19 +444,23 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
             }),
           });
         } catch {
-          // Use local TTS via event
-          window.dispatchEvent(new CustomEvent('avatar-speak', {
+          // Use provider-specific event
+          const eventName = currentProvider === 'heygen' ? 'heygen-speak' :
+                           currentProvider === 'd-id' ? 'did-speak' : 'avatar-speak';
+          window.dispatchEvent(new CustomEvent(eventName, {
             detail: { text, emotion }
           }));
         }
       } else {
-        // Offline mode: dispatch event for VideoAvatar to handle with local TTS
-        window.dispatchEvent(new CustomEvent('avatar-speak', {
+        // Offline mode: dispatch event based on provider
+        const eventName = currentProvider === 'heygen' ? 'heygen-speak' :
+                         currentProvider === 'd-id' ? 'did-speak' : 'avatar-speak';
+        window.dispatchEvent(new CustomEvent(eventName, {
           detail: { text, emotion }
         }));
       }
     },
-    [session, isOfflineMode]
+    [session, isOfflineMode, preferredProvider]
   );
 
   const setEmotion = useCallback((emotion: AvatarEmotion) => {
@@ -395,9 +501,12 @@ export const AvatarContextProvider: React.FC<AvatarProviderProps> = ({ children 
     currentAvatar,
     session,
     state,
+    preferredProvider,
+    availableProviders,
     selectAvatar,
     speak,
     setEmotion,
+    setPreferredProvider,
     endSession,
   };
 

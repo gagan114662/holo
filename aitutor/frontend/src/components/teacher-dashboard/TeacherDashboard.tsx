@@ -44,6 +44,25 @@ interface TeacherDashboardProps {
   onClose: () => void;
 }
 
+// Content types for teacher uploads
+interface TeacherContent {
+  id: string;
+  type: 'assignment' | 'test' | 'research' | 'lesson';
+  title: string;
+  description: string;
+  subject: string;
+  gradeLevel: string;
+  avatarAssigned?: string;
+  content: string;
+  attachments: string[];
+  createdAt: string;
+  dueDate?: string;
+  status: 'draft' | 'published' | 'archived';
+}
+
+// Storage key for teacher content
+const TEACHER_CONTENT_KEY = 'teacherContent';
+
 // Convert API student data to local Student interface
 const convertStudentData = (apiStudent: any): Student => {
   // Determine status based on last activity and accuracy
@@ -186,7 +205,7 @@ const defaultSettings: TeacherSettings = {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) => {
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'analytics' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'content' | 'analytics' | 'settings'>('overview');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [settings, setSettings] = useState<TeacherSettings>(() => {
@@ -194,6 +213,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
     return saved ? JSON.parse(saved) : defaultSettings;
   });
   const [interventionStudent, setInterventionStudent] = useState<Student | null>(null);
+
+  // Content management state
+  const [teacherContent, setTeacherContent] = useState<TeacherContent[]>(() => {
+    const saved = localStorage.getItem(TEACHER_CONTENT_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showContentForm, setShowContentForm] = useState(false);
+  const [contentFormData, setContentFormData] = useState<Partial<TeacherContent>>({
+    type: 'assignment',
+    title: '',
+    description: '',
+    subject: 'mathematics',
+    gradeLevel: 'grade-9',
+    content: '',
+    attachments: [],
+    status: 'draft',
+  });
+  const [editingContentId, setEditingContentId] = useState<string | null>(null);
+  const [contentFilter, setContentFilter] = useState<'all' | 'assignment' | 'test' | 'research' | 'lesson'>('all');
 
   // Load real progress data
   useEffect(() => {
@@ -208,9 +246,90 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
     localStorage.setItem('teacherSettings', JSON.stringify(settings));
   }, [settings]);
 
+  // Save teacher content to localStorage
+  useEffect(() => {
+    localStorage.setItem(TEACHER_CONTENT_KEY, JSON.stringify(teacherContent));
+  }, [teacherContent]);
+
   // Handle settings toggle
   const handleSettingChange = (key: keyof TeacherSettings) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Content management functions
+  const handleContentFormChange = (field: keyof TeacherContent, value: any) => {
+    setContentFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveContent = () => {
+    if (!contentFormData.title || !contentFormData.description) {
+      alert('Please fill in title and description');
+      return;
+    }
+
+    if (editingContentId) {
+      // Update existing content
+      setTeacherContent(prev => prev.map(item =>
+        item.id === editingContentId
+          ? { ...item, ...contentFormData, id: editingContentId }
+          : item
+      ));
+      setEditingContentId(null);
+    } else {
+      // Create new content
+      const newContent: TeacherContent = {
+        ...contentFormData as TeacherContent,
+        id: `content_${Date.now()}`,
+        createdAt: new Date().toISOString(),
+      };
+      setTeacherContent(prev => [newContent, ...prev]);
+    }
+
+    // Reset form
+    setContentFormData({
+      type: 'assignment',
+      title: '',
+      description: '',
+      subject: 'mathematics',
+      gradeLevel: 'grade-9',
+      content: '',
+      attachments: [],
+      status: 'draft',
+    });
+    setShowContentForm(false);
+  };
+
+  const handleEditContent = (content: TeacherContent) => {
+    setContentFormData(content);
+    setEditingContentId(content.id);
+    setShowContentForm(true);
+  };
+
+  const handleDeleteContent = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this content?')) {
+      setTeacherContent(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const handlePublishContent = (id: string) => {
+    setTeacherContent(prev => prev.map(item =>
+      item.id === id ? { ...item, status: 'published' as const } : item
+    ));
+  };
+
+  const filteredContent = useMemo(() => {
+    if (contentFilter === 'all') return teacherContent;
+    return teacherContent.filter(item => item.type === contentFilter);
+  }, [teacherContent, contentFilter]);
+
+  const getContentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'assignment': return 'assignment';
+      case 'test': return 'quiz';
+      case 'research': return 'science';
+      case 'lesson': return 'menu_book';
+      default: return 'description';
+    }
   };
 
   // Handle intervene action
@@ -295,7 +414,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
         </div>
 
         <div className="dashboard-tabs">
-          {(['overview', 'students', 'analytics', 'settings'] as const).map(tab => (
+          {(['overview', 'students', 'content', 'analytics', 'settings'] as const).map(tab => (
             <button
               key={tab}
               className={activeTab === tab ? 'active' : ''}
@@ -304,6 +423,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
               <span className="material-symbols-outlined">
                 {tab === 'overview' ? 'space_dashboard' :
                  tab === 'students' ? 'groups' :
+                 tab === 'content' ? 'upload_file' :
                  tab === 'analytics' ? 'analytics' : 'settings'}
               </span>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -472,6 +592,287 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ isOpen, onClose }) 
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'content' && (
+            <div className="content-management">
+              <div className="content-header">
+                <div className="content-header-left">
+                  <h3>
+                    <span className="material-symbols-outlined">upload_file</span>
+                    Curriculum & Content
+                  </h3>
+                  <p>Upload assignments, prep tests, and provide research materials for your avatars to teach</p>
+                </div>
+                <button className="create-content-btn" onClick={() => {
+                  setShowContentForm(true);
+                  setEditingContentId(null);
+                  setContentFormData({
+                    type: 'assignment',
+                    title: '',
+                    description: '',
+                    subject: 'mathematics',
+                    gradeLevel: 'grade-9',
+                    content: '',
+                    attachments: [],
+                    status: 'draft',
+                  });
+                }}>
+                  <span className="material-symbols-outlined">add</span>
+                  Create Content
+                </button>
+              </div>
+
+              {/* Content filters */}
+              <div className="content-filters">
+                {(['all', 'assignment', 'test', 'research', 'lesson'] as const).map(type => (
+                  <button
+                    key={type}
+                    className={`filter-btn ${contentFilter === type ? 'active' : ''}`}
+                    onClick={() => setContentFilter(type)}
+                  >
+                    <span className="material-symbols-outlined">
+                      {type === 'all' ? 'folder' : getContentTypeIcon(type)}
+                    </span>
+                    {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+                    <span className="count">
+                      {type === 'all' ? teacherContent.length : teacherContent.filter(c => c.type === type).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Content form modal */}
+              {showContentForm && (
+                <div className="content-form-overlay" onClick={() => setShowContentForm(false)}>
+                  <div className="content-form" onClick={e => e.stopPropagation()}>
+                    <div className="form-header">
+                      <h4>{editingContentId ? 'Edit Content' : 'Create New Content'}</h4>
+                      <button className="close-form" onClick={() => setShowContentForm(false)}>
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+
+                    <div className="form-body">
+                      <div className="form-row">
+                        <label>Content Type</label>
+                        <div className="type-selector">
+                          {(['assignment', 'test', 'research', 'lesson'] as const).map(type => (
+                            <button
+                              key={type}
+                              className={`type-btn ${contentFormData.type === type ? 'active' : ''}`}
+                              onClick={() => handleContentFormChange('type', type)}
+                            >
+                              <span className="material-symbols-outlined">{getContentTypeIcon(type)}</span>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label>Title</label>
+                        <input
+                          type="text"
+                          placeholder="Enter content title..."
+                          value={contentFormData.title || ''}
+                          onChange={(e) => handleContentFormChange('title', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <label>Description</label>
+                        <textarea
+                          placeholder="Brief description of this content..."
+                          value={contentFormData.description || ''}
+                          onChange={(e) => handleContentFormChange('description', e.target.value)}
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="form-row-group">
+                        <div className="form-row">
+                          <label>Subject</label>
+                          <select
+                            value={contentFormData.subject || 'mathematics'}
+                            onChange={(e) => handleContentFormChange('subject', e.target.value)}
+                          >
+                            <option value="mathematics">Mathematics</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="biology">Biology</option>
+                            <option value="history">History</option>
+                            <option value="literature">Literature</option>
+                            <option value="computer_science">Computer Science</option>
+                            <option value="art">Art</option>
+                            <option value="philosophy">Philosophy</option>
+                          </select>
+                        </div>
+
+                        <div className="form-row">
+                          <label>Grade Level</label>
+                          <select
+                            value={contentFormData.gradeLevel || 'grade-9'}
+                            onChange={(e) => handleContentFormChange('gradeLevel', e.target.value)}
+                          >
+                            <option value="grade-6">Grade 6</option>
+                            <option value="grade-7">Grade 7</option>
+                            <option value="grade-8">Grade 8</option>
+                            <option value="grade-9">Grade 9</option>
+                            <option value="grade-10">Grade 10</option>
+                            <option value="grade-11">Grade 11</option>
+                            <option value="grade-12">Grade 12</option>
+                            <option value="university">University</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <label>Assign to Avatar (Optional)</label>
+                        <select
+                          value={contentFormData.avatarAssigned || ''}
+                          onChange={(e) => handleContentFormChange('avatarAssigned', e.target.value)}
+                        >
+                          <option value="">Any Avatar</option>
+                          <option value="einstein">Albert Einstein</option>
+                          <option value="newton">Isaac Newton</option>
+                          <option value="curie">Marie Curie</option>
+                          <option value="shakespeare">William Shakespeare</option>
+                          <option value="victoria">Queen Victoria</option>
+                          <option value="henry">Henry VIII</option>
+                          <option value="nightingale">Florence Nightingale</option>
+                          <option value="darwin">Charles Darwin</option>
+                          <option value="ada">Ada Lovelace</option>
+                          <option value="socrates">Socrates</option>
+                        </select>
+                      </div>
+
+                      <div className="form-row">
+                        <label>Content / Instructions</label>
+                        <textarea
+                          placeholder="Enter the full content, questions, research material, or lesson plan..."
+                          value={contentFormData.content || ''}
+                          onChange={(e) => handleContentFormChange('content', e.target.value)}
+                          rows={6}
+                        />
+                      </div>
+
+                      {contentFormData.type === 'assignment' && (
+                        <div className="form-row">
+                          <label>Due Date (Optional)</label>
+                          <input
+                            type="date"
+                            value={contentFormData.dueDate || ''}
+                            onChange={(e) => handleContentFormChange('dueDate', e.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      <div className="form-row">
+                        <label>File Attachments</label>
+                        <div className="file-upload-area">
+                          <span className="material-symbols-outlined">cloud_upload</span>
+                          <p>Drag & drop files here or click to browse</p>
+                          <input type="file" multiple onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            const fileNames = files.map(f => f.name);
+                            handleContentFormChange('attachments', [...(contentFormData.attachments || []), ...fileNames]);
+                          }} />
+                        </div>
+                        {contentFormData.attachments && contentFormData.attachments.length > 0 && (
+                          <div className="attachment-list">
+                            {contentFormData.attachments.map((file, i) => (
+                              <div key={i} className="attachment-item">
+                                <span className="material-symbols-outlined">attach_file</span>
+                                {file}
+                                <button onClick={() => {
+                                  const newAttachments = [...(contentFormData.attachments || [])];
+                                  newAttachments.splice(i, 1);
+                                  handleContentFormChange('attachments', newAttachments);
+                                }}>
+                                  <span className="material-symbols-outlined">close</span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-actions">
+                      <button className="save-draft-btn" onClick={() => {
+                        handleContentFormChange('status', 'draft');
+                        handleSaveContent();
+                      }}>
+                        <span className="material-symbols-outlined">save</span>
+                        Save as Draft
+                      </button>
+                      <button className="publish-btn" onClick={() => {
+                        handleContentFormChange('status', 'published');
+                        handleSaveContent();
+                      }}>
+                        <span className="material-symbols-outlined">publish</span>
+                        Publish
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Content list */}
+              <div className="content-list">
+                {filteredContent.length > 0 ? (
+                  filteredContent.map(content => (
+                    <div key={content.id} className={`content-item ${content.status}`}>
+                      <div className="content-icon">
+                        <span className="material-symbols-outlined">{getContentTypeIcon(content.type)}</span>
+                      </div>
+                      <div className="content-details">
+                        <div className="content-title">
+                          <h4>{content.title}</h4>
+                          <span className={`status-badge ${content.status}`}>{content.status}</span>
+                        </div>
+                        <p className="content-description">{content.description}</p>
+                        <div className="content-meta">
+                          <span><span className="material-symbols-outlined">subject</span>{content.subject}</span>
+                          <span><span className="material-symbols-outlined">school</span>{content.gradeLevel}</span>
+                          {content.avatarAssigned && (
+                            <span><span className="material-symbols-outlined">smart_toy</span>{content.avatarAssigned}</span>
+                          )}
+                          <span><span className="material-symbols-outlined">calendar_today</span>{new Date(content.createdAt).toLocaleDateString()}</span>
+                          {content.dueDate && (
+                            <span className="due-date"><span className="material-symbols-outlined">event</span>Due: {new Date(content.dueDate).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="content-actions">
+                        <button className="action-btn" onClick={() => handleEditContent(content)} title="Edit">
+                          <span className="material-symbols-outlined">edit</span>
+                        </button>
+                        {content.status === 'draft' && (
+                          <button className="action-btn publish" onClick={() => handlePublishContent(content.id)} title="Publish">
+                            <span className="material-symbols-outlined">publish</span>
+                          </button>
+                        )}
+                        <button className="action-btn delete" onClick={() => handleDeleteContent(content.id)} title="Delete">
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-content">
+                    <span className="material-symbols-outlined">folder_open</span>
+                    <h4>No content yet</h4>
+                    <p>Create your first assignment, test, or lesson to get started!</p>
+                    <button onClick={() => setShowContentForm(true)}>
+                      <span className="material-symbols-outlined">add</span>
+                      Create Content
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

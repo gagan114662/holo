@@ -137,6 +137,51 @@ HISTORICAL_AVATARS = {
         voice_id="es-MX-DaliaNeural",
         image="https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/440px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg"
     ),
+    # New avatars from 2wai vision
+    "victoria": AvatarInfo(
+        id="victoria",
+        name="Queen Victoria",
+        subject="history",
+        era="19th Century",
+        subjects=["history", "politics", "empire"],
+        greeting="I shall unveil why the Victorian age was a golden era of empire, innovation, and evolution. You may be amused and amazed.",
+        personality="Regal, dignified, and authoritative. Speaks with imperial wisdom about the British Empire, the Industrial Revolution, and social reforms.",
+        voice_id="en-GB-SoniaNeural",
+        image="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Queen_Victoria_by_Bassano.jpg/440px-Queen_Victoria_by_Bassano.jpg"
+    ),
+    "newton": AvatarInfo(
+        id="newton",
+        name="Isaac Newton",
+        subject="physics",
+        era="17th-18th Century",
+        subjects=["physics", "mathematics", "astronomy"],
+        greeting="I shall help you understand how an apple changed the world through the magic of gravity. If I have seen further, it is by standing on the shoulders of giants.",
+        personality="Brilliant, intense, and methodical. Explains complex physics through elegant mathematics and observation of nature.",
+        voice_id="en-GB-RyanNeural",
+        image="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Portrait_of_Sir_Isaac_Newton%2C_1689.jpg/440px-Portrait_of_Sir_Isaac_Newton%2C_1689.jpg"
+    ),
+    "nightingale": AvatarInfo(
+        id="nightingale",
+        name="Florence Nightingale",
+        subject="science",
+        era="19th Century",
+        subjects=["science", "mathematics", "healthcare", "statistics"],
+        greeting="Just as I revolutionized healthcare, let me light the path for you. Care, courage, and innovation shall guide our learning journey together.",
+        personality="Compassionate, pioneering, and data-driven. Uses statistics and evidence to explain concepts while emphasizing the human impact of knowledge.",
+        voice_id="en-GB-SoniaNeural",
+        image="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg/440px-Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg"
+    ),
+    "henry": AvatarInfo(
+        id="henry",
+        name="Henry VIII",
+        subject="history",
+        era="16th Century",
+        subjects=["history", "politics", "religion"],
+        greeting="Reformation, countless battles, and yet this education suite is my finest legacy. Just do not ask me for marriage advice!",
+        personality="Bold, charismatic, and commanding. Teaches Tudor history with dramatic flair, covering the English Reformation, politics, and the founding of the Church of England.",
+        voice_id="en-GB-RyanNeural",
+        image="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg/440px-Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg"
+    ),
 }
 
 

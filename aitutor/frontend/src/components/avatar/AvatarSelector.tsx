@@ -123,6 +123,59 @@ const BUILT_IN_AVATARS: HistoricalFigure[] = [
     heygen_avatar_id: '',
     image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg/440px-Frida_Kahlo%2C_by_Guillermo_Kahlo.jpg',
   },
+  // New avatars from 2wai vision
+  {
+    id: 'victoria',
+    name: 'Queen Victoria',
+    subject: 'history',
+    era: '19th Century',
+    subjects: ['history', 'politics', 'empire'],
+    greeting: 'I shall unveil why the Victorian age was a golden era of empire, innovation, and evolution. You may be amused and amazed.',
+    personality: 'Regal, dignified, and authoritative. Speaks with imperial wisdom about the British Empire.',
+    voice_id: 'en-GB-SoniaNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'angela_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Queen_Victoria_by_Bassano.jpg/440px-Queen_Victoria_by_Bassano.jpg',
+  },
+  {
+    id: 'newton',
+    name: 'Isaac Newton',
+    subject: 'physics',
+    era: '17th-18th Century',
+    subjects: ['physics', 'mathematics', 'astronomy'],
+    greeting: 'I shall help you understand how an apple changed the world through the magic of gravity.',
+    personality: 'Brilliant, intense, and methodical. Explains complex physics through elegant mathematics.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'wayne_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Portrait_of_Sir_Isaac_Newton%2C_1689.jpg/440px-Portrait_of_Sir_Isaac_Newton%2C_1689.jpg',
+  },
+  {
+    id: 'nightingale',
+    name: 'Florence Nightingale',
+    subject: 'science',
+    era: '19th Century',
+    subjects: ['science', 'mathematics', 'healthcare', 'statistics'],
+    greeting: 'Just as I revolutionized healthcare, let me light the path for you. Care, courage, and innovation shall guide our journey.',
+    personality: 'Compassionate, pioneering, and data-driven. Uses statistics and evidence to explain concepts.',
+    voice_id: 'en-GB-SoniaNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'lily_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg/440px-Florence_Nightingale_%28H_Hering_NPG_x82368%29.jpg',
+  },
+  {
+    id: 'henry',
+    name: 'Henry VIII',
+    subject: 'history',
+    era: '16th Century',
+    subjects: ['history', 'politics', 'religion'],
+    greeting: 'Reformation, countless battles, and yet this education suite is my finest legacy. Just do not ask me for marriage advice!',
+    personality: 'Bold, charismatic, and commanding. Teaches Tudor history with dramatic flair.',
+    voice_id: 'en-GB-RyanNeural',
+    avatar_url: '',
+    heygen_avatar_id: 'josh_lite3_20230714',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg/440px-Hans_Holbein%2C_the_Younger%2C_Around_1497-1543_-_Portrait_of_Henry_VIII_of_England_-_Google_Art_Project.jpg',
+  },
 ];
 
 // Subject icons mapping
@@ -143,7 +196,9 @@ const SUBJECT_ICONS: Record<string, string> = {
 // Era colors for visual distinction
 const ERA_COLORS: Record<string, string> = {
   Ancient: '#8B4513',
+  '16th Century': '#6B3E26',
   '16th-17th Century': '#4A5568',
+  '17th-18th Century': '#5C4B51',
   '19th Century': '#2C5282',
   '19th-20th Century': '#553C9A',
   '20th Century': '#2F855A',
@@ -288,7 +343,7 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
           >
             All Subjects
           </button>
-          {['physics', 'mathematics', 'literature', 'biology', 'philosophy', 'art', 'computer_science'].map(
+          {['physics', 'mathematics', 'literature', 'biology', 'philosophy', 'art', 'history', 'computer_science'].map(
             (subject) => (
               <button
                 key={subject}
