@@ -75,18 +75,21 @@ class GradingService:
     2. Normalized match (handles case, whitespace, punctuation)
     3. Numeric tolerance (for math answers)
     4. Multiple acceptable answers
-    5. AI semantic grading (for complex answers)
+    5. AI semantic grading (for complex answers) - Powered by Kimi (Moonshot AI)
     """
 
     def __init__(self):
-        self.anthropic_client = None
-        if settings.anthropic_api_key:
+        self.kimi_client = None
+        if settings.kimi_api_key:
             try:
-                import anthropic
-                self.anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-                logger.info("Anthropic async client initialized for AI grading")
+                from openai import AsyncOpenAI
+                self.kimi_client = AsyncOpenAI(
+                    api_key=settings.kimi_api_key,
+                    base_url=settings.kimi_base_url
+                )
+                logger.info("Kimi (Moonshot AI) client initialized for AI grading")
             except ImportError:
-                logger.warning("anthropic package not installed, AI grading disabled")
+                logger.warning("openai package not installed, AI grading disabled")
     
     async def grade_answer(
         self,
@@ -159,8 +162,8 @@ class GradingService:
             if partial_result.get("is_partial"):
                 return partial_result
 
-        # Layer 5: AI semantic grading (if available and needed)
-        if self.anthropic_client and question.question_type in [QuestionType.FREE_TEXT, QuestionType.ESSAY]:
+        # Layer 5: AI semantic grading (if available and needed) - Powered by Kimi
+        if self.kimi_client and question.question_type in [QuestionType.FREE_TEXT, QuestionType.ESSAY]:
             ai_result = await self._grade_with_ai(question, student_answer)
             if ai_result:
                 return ai_result
@@ -416,12 +419,12 @@ class GradingService:
             return {"is_correct": False, "is_partial": False, "score": 0.0, "feedback": "Could not parse your answer. Use format: A-1, B-2, C-3"}
 
     async def _grade_code(self, student_code: str, question: Question) -> dict:
-        """Grade code answers by running test cases"""
+        """Grade code answers by running test cases - Powered by Kimi"""
         test_cases = question.test_cases or []
 
         if not test_cases:
             # No test cases, use AI grading if available
-            if self.anthropic_client:
+            if self.kimi_client:
                 return await self._grade_with_ai(question, student_code)
             return {
                 "is_correct": False,
@@ -431,8 +434,8 @@ class GradingService:
             }
 
         # Note: Actual code execution would require a sandboxed environment
-        # For now, we'll use AI to evaluate the code logic
-        if self.anthropic_client:
+        # For now, we'll use Kimi AI to evaluate the code logic
+        if self.kimi_client:
             try:
                 prompt = f"""Evaluate this code solution:
 
@@ -446,17 +449,17 @@ Student's code:
 Evaluate if the code would pass the test cases. Respond in JSON:
 {{"is_correct": true/false, "is_partial": true/false, "score": 0.0-1.0, "feedback": "explanation"}}"""
 
-                response = await self.anthropic_client.messages.create(
-                    model=settings.anthropic_model,
+                response = await self.kimi_client.chat.completions.create(
+                    model=settings.kimi_model,
                     max_tokens=300,
                     messages=[{"role": "user", "content": prompt}]
                 )
 
-                result = self._parse_ai_json_response(response.content[0].text)
+                result = self._parse_ai_json_response(response.choices[0].message.content)
                 if result:
                     return result
             except Exception as e:
-                logger.error(f"AI code grading failed: {e}")
+                logger.error(f"Kimi AI code grading failed: {e}")
 
         return {
             "is_correct": False,
@@ -466,19 +469,19 @@ Evaluate if the code would pass the test cases. Respond in JSON:
         }
     
     async def _grade_with_ai(self, question: Question, student_answer: str) -> Optional[dict]:
-        """Use AI for semantic grading of complex answers"""
-        if not self.anthropic_client:
+        """Use Kimi AI for semantic grading of complex answers"""
+        if not self.kimi_client:
             return None
 
         try:
             return await self._call_ai_grading(question, student_answer)
         except Exception as e:
-            logger.error(f"AI grading error after retries: {e}")
+            logger.error(f"Kimi AI grading error after retries: {e}")
             return None
 
     @retry_with_backoff(max_retries=3, base_delay=1.0, exceptions=(Exception,))
     async def _call_ai_grading(self, question: Question, student_answer: str) -> Optional[dict]:
-        """Call AI API with retry logic"""
+        """Call Kimi AI API with retry logic"""
         prompt = f"""You are grading a student's answer. Be encouraging but accurate.
 
 Question: {question.content}
@@ -494,13 +497,13 @@ Consider:
 - Be encouraging even when wrong
 """
 
-        response = await self.anthropic_client.messages.create(
-            model=settings.anthropic_model,
+        response = await self.kimi_client.chat.completions.create(
+            model=settings.kimi_model,
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
         )
 
-        result = self._parse_ai_json_response(response.content[0].text)
+        result = self._parse_ai_json_response(response.choices[0].message.content)
         if result:
             return result
         return None

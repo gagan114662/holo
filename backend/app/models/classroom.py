@@ -2,25 +2,25 @@
 Classroom and enrollment models for teacher dashboard
 """
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 import enum
 
 from ..database import Base
+from .utils import GUID
 
 
 class Classroom(Base):
     __tablename__ = "classrooms"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    teacher_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
 
     # Class info
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=True)
+    subject_id = Column(GUID(), ForeignKey("subjects.id"), nullable=True)
     grade_level = Column(String(20), nullable=True)  # "K", "1", "2", ..., "12", "college"
 
     # Settings
@@ -56,9 +56,9 @@ class EnrollmentStatus(str, enum.Enum):
 class Enrollment(Base):
     __tablename__ = "enrollments"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    classroom_id = Column(UUID(as_uuid=True), ForeignKey("classrooms.id"), nullable=False)
-    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    classroom_id = Column(GUID(), ForeignKey("classrooms.id"), nullable=False)
+    student_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
 
     # Status
     status = Column(SQLEnum(EnrollmentStatus), default=EnrollmentStatus.ACTIVE)

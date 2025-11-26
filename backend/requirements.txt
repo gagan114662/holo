@@ -6,6 +6,7 @@ python-multipart==0.0.6
 # Database
 sqlalchemy==2.0.25
 asyncpg==0.29.0
+aiosqlite==0.19.0
 alembic==1.13.1
 psycopg2-binary==2.9.9
 
@@ -21,8 +22,8 @@ firebase-admin==6.4.0
 # AI/ML
 anthropic==0.18.1
 openai==1.12.0
-ace-framework[all]>=0.1.0
-litellm>=1.0.0
+# ace-framework[all]>=0.1.0  # Optional - for ACE tutoring
+# litellm>=1.0.0  # Optional - for multi-model support
 
 # Utilities
 pydantic==2.6.0
@@ -36,9 +37,9 @@ aiofiles==23.2.1
 # Avatar Generation
 edge-tts==6.1.9
 
-# Speech Recognition (Whisper)
-openai-whisper==20231117
-faster-whisper==1.0.0
+# Speech Recognition (Whisper) - Optional, requires ffmpeg
+# openai-whisper==20231117
+# faster-whisper==1.0.0
 
 # Testing
 pytest==7.4.4

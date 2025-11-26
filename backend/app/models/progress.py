@@ -2,21 +2,21 @@
 Progress tracking models
 """
 from sqlalchemy import Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 
 from ..database import Base
+from .utils import GUID, JSONType
 
 
 class QuestionAttempt(Base):
     __tablename__ = "question_attempts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False, index=True)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=True, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(GUID(), ForeignKey("questions.id"), nullable=False, index=True)
+    session_id = Column(GUID(), ForeignKey("tutoring_sessions.id"), nullable=True, index=True)
 
     # Attempt data
     answer_given = Column(Text, nullable=False)  # Renamed from 'answer'
@@ -45,8 +45,8 @@ class QuestionAttempt(Base):
 class UserProgress(Base):
     __tablename__ = "user_progress"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), unique=True, nullable=False, index=True)
 
     # Overall stats
     total_sessions = Column(Integer, default=0)
@@ -64,7 +64,7 @@ class UserProgress(Base):
     experience_points = Column(Integer, default=0)
 
     # Achievements
-    achievements = Column(JSONB, default=[])  # [{"id": "...", "unlocked_at": "..."}]
+    achievements = Column(JSONType(), default=[])  # [{"id": "...", "unlocked_at": "..."}]
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -87,11 +87,11 @@ class UserProgress(Base):
 class SkillProgress(Base):
     __tablename__ = "skill_progress"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_progress_id = Column(UUID(as_uuid=True), ForeignKey("user_progress.id"), nullable=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    skill_id = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False, index=True)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_progress_id = Column(GUID(), ForeignKey("user_progress.id"), nullable=True)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
+    skill_id = Column(GUID(), ForeignKey("skills.id"), nullable=False, index=True)
+    subject_id = Column(GUID(), ForeignKey("subjects.id"), nullable=False, index=True)
 
     # Mastery
     mastery_level = Column(Float, default=0.0)  # 0.0 - 1.0

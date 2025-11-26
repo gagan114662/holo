@@ -2,13 +2,13 @@
 Tutoring session models
 """
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum as SQLEnum, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 import enum
 
 from ..database import Base
+from .utils import GUID, JSONType
 
 
 class SessionStatus(str, enum.Enum):
@@ -21,14 +21,14 @@ class SessionStatus(str, enum.Enum):
 class TutoringSession(Base):
     __tablename__ = "tutoring_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False, index=True)
 
     # Session info
     session_type = Column(String(50), default="tutoring")  # tutoring, practice, assessment
     avatar_id = Column(String(50), nullable=False)
     avatar_name = Column(String(100), nullable=True)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=True, index=True)
+    subject_id = Column(GUID(), ForeignKey("subjects.id"), nullable=True, index=True)
     status = Column(SQLEnum(SessionStatus), default=SessionStatus.ACTIVE, index=True)
 
     # Stats
@@ -67,18 +67,18 @@ class MessageRole(str, enum.Enum):
 class SessionMessage(Base):
     __tablename__ = "session_messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("tutoring_sessions.id"), nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    session_id = Column(GUID(), ForeignKey("tutoring_sessions.id"), nullable=False, index=True)
 
     # Message content
     role = Column(SQLEnum(MessageRole), nullable=False)
     content = Column(Text, nullable=False)
 
     # Optional metadata
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=True)
+    question_id = Column(GUID(), ForeignKey("questions.id"), nullable=True)
     was_correct = Column(Boolean, nullable=True)
     emotion = Column(String(20), nullable=True)
-    extra_data = Column(JSONB, default={})  # Renamed from 'metadata' (SQLAlchemy reserved)
+    extra_data = Column(JSONType(), default={})  # Renamed from 'metadata' (SQLAlchemy reserved)
 
     # Timestamps
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)  # Renamed from 'created_at'

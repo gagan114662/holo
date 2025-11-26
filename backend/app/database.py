@@ -12,11 +12,16 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Create async engine
+# Create async engine with SQLite compatibility
+connect_args = {}
+if settings.database_url.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.database_echo,
-    future=True
+    future=True,
+    connect_args=connect_args
 )
 
 # Create session factory

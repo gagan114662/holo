@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-3-haiku-20240307"  # Configurable AI model
     openai_api_key: Optional[str] = None
 
+    # Kimi (Moonshot AI) - Primary AI for grading
+    kimi_api_key: Optional[str] = None
+    kimi_model: str = "moonshot-v1-8k"  # Options: moonshot-v1-8k, moonshot-v1-32k, moonshot-v1-128k
+    kimi_base_url: str = "https://api.moonshot.cn/v1"
+
     # ACE Framework (Agentic Context Engine)
     ace_enabled: bool = True  # Enable adaptive learning
     ace_playbook_dir: str = "playbooks"  # Directory for storing learned strategies
